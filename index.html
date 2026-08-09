@@ -414,7 +414,7 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
     Usa <b>Exportar</b> para bajarte una copia e <b>Importar</b> para recuperarla.
   </div>
   <div id="cuerpo" style="padding-top:22px"></div>
-  <p class="pie">Prototipo · datos de caja reales de enero a julio de 2026 · las reservas son de ejemplo</p>
+  <p class="pie" id="pie">Marbella Custom Cars · los datos se guardan en la nube</p>
 </main>
 
 </div>
@@ -1248,6 +1248,7 @@ function vistaRegistro(){
 
 /* ─── hoja de trabajo ──────────────────────────────────────────────── */
 let editT=null, previoT=null;
+let mats=[];        // materiales de la hoja abierta
 
 function abrirTrabajo(id, previo){
   editT = id ? D.trabajos.find(t=>t.id===id) : null;
@@ -1319,7 +1320,7 @@ function abrirTrabajo(id, previo){
 
   /* Materiales usados en este coche. Se restan del presupuesto para ver
      el margen; no se suman a los gastos, que ya los recoge la caja. */
-  let mats = (editT && Array.isArray(editT.materiales)) ? editT.materiales.map(m=>({...m})) : [];
+  mats = (editT && Array.isArray(editT.materiales)) ? editT.materiales.map(m=>({...m})) : [];
   function pintarMats(){
     const cont=$('#t-materiales'); if(!cont) return;
     const total=mats.reduce((a,m)=>a+(m.coste||0),0);
@@ -1352,10 +1353,15 @@ function abrirTrabajo(id, previo){
   function pintarSena(){
     const cont=$('#t-sena'); if(!cont) return;
     const serv=$('#t-serv').value;
-    if(editT || !pideSena(serv)){ cont.innerHTML=''; return; }
+    /* Se muestra también al editar: a veces el servicio cambia después de
+       tomar el trabajo, o la señal se cobra unos días más tarde. Solo se
+       oculta cuando ya hay algún cobro, porque entonces se gestiona desde
+       la lista de cobros de abajo. */
+    const yaCobrado = editT ? cobrado(editT) > 0 : false;
+    if(!pideSena(serv) || yaCobrado){ cont.innerHTML=''; return; }
     const mitad=Math.round((+$('#t-pres').value||0)/2);
     cont.innerHTML = `<div class="sena">
-      <label><input type="checkbox" id="s-cobrada"> Cobrar ahora la señal del 50 %</label>
+      <label><input type="checkbox" id="s-cobrada"> Cobrar ${editT?'la':'ahora la'} señal del 50 %</label>
       <div class="mini-form" style="grid-template-columns:1fr 1fr">
         <input type="number" id="s-imp" value="${mitad||''}" placeholder="Importe" inputmode="decimal">
         <select id="s-via">${VIAS.map(v=>`<option${v==='transferencia'?' selected':''}>${v}</option>`).join('')}</select>
@@ -1363,9 +1369,19 @@ function abrirTrabajo(id, previo){
       <p>El PPF y el vinilo se cobran a la mitad para apartar material y bloquear la plaza.</p>
     </div>`;
   }
+  let senaMarcada=false, senaVia='transferencia';
+  function pintarSenaConEstado(){
+    const chk=$('#s-cobrada'), via=$('#s-via');
+    if(chk) senaMarcada=chk.checked;
+    if(via) senaVia=via.value;
+    pintarSena();
+    const chk2=$('#s-cobrada'), via2=$('#s-via');
+    if(chk2) chk2.checked=senaMarcada;
+    if(via2) via2.value=senaVia;
+  }
   pintarSena();
-  $('#t-serv').addEventListener('change',pintarSena);
-  $('#t-pres').addEventListener('input',pintarSena);
+  $('#t-serv').addEventListener('change',pintarSenaConEstado);
+  $('#t-pres').addEventListener('input',pintarSenaConEstado);
 
   $('#t-serv').addEventListener('change',e=>{
     if(editT) return;                       // no pisar lo que ya ajusto
@@ -1406,16 +1422,15 @@ function guardarTrabajo(){
     presupuesto:+$('#t-pres').value||0,
     materiales:mats
   };
-  if(editT) Object.assign(editT,d);
-  else {
-    const nuevo = Object.assign({id:nid()}, d);
-    D.trabajos.push(nuevo);
-    const chk=$('#s-cobrada');
-    if(chk && chk.checked){
-      const imp=+$('#s-imp').value||0;
-      if(imp) D.cobros.push({id:nid(), trabajoId:nuevo.id, importe:imp,
-        via:$('#s-via').value, fecha:aIso(hoy), concepto:`${nuevo.coche} · señal 50%`});
-    }
+  let destino;
+  if(editT){ Object.assign(editT,d); destino=editT; }
+  else { destino = Object.assign({id:nid()}, d); D.trabajos.push(destino); }
+
+  const chk=$('#s-cobrada');
+  if(chk && chk.checked){
+    const imp=+$('#s-imp').value||0;
+    if(imp) D.cobros.push({id:nid(), trabajoId:destino.id, importe:imp,
+      via:$('#s-via').value, fecha:aIso(hoy), concepto:`${destino.coche} · señal 50%`});
   }
   cerrar(); guardar(); pintar();
 }
@@ -1850,7 +1865,9 @@ function importar(file){
         }
       }
       if(j.fiscal) await DOC_FISCAL().set(j.fiscal, {merge:true});
-      alert(`Cargados ${n} registros.`);
+      vista='dinero'; anioSel=null;      // los cobros y gastos se ven aquí
+      pintar();
+      alert(`Cargados ${n} registros. Los tienes en la pestaña Dinero.`);
     }catch(e){
       console.warn(e);
       alert('Se ha cortado la carga: '+(e.code||e.message));
@@ -1861,6 +1878,9 @@ function importar(file){
 
 /* ─── pintar ───────────────────────────────────────────────────────── */
 function pintar(){
+  const pie=document.getElementById('pie');
+  if(pie) pie.textContent = `En la base: ${D.trabajos.length} trabajos · `
+    + `${D.cobros.length} cobros · ${D.gastos.length} gastos · ${D.clientes.length} clientes`;
   const c=$('#cuerpo');
   c.innerHTML = vista==='plazas'?vistaPlazas() : vista==='dinero'?vistaDinero()
     : vista==='clientes'?vistaClientes() : vista==='ajustes'?vistaAjustes() : vistaRegistro();
@@ -1933,7 +1953,11 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
 }));
 $('#nuevo').addEventListener('click',()=>abrirTrabajo(null));
 $('#exportar').addEventListener('click',exportar);
-$('#importar').addEventListener('change',e=>{ if(e.target.files[0]) importar(e.target.files[0]); });
+$('#importar').addEventListener('change',e=>{
+  const f=e.target.files[0];
+  e.target.value='';            // así se puede reintentar con el mismo archivo
+  if(f) importar(f);
+});
 $('#hoja').addEventListener('click',e=>{
   if(e.target.id==='hoja'||e.target.hasAttribute('data-cerrar')) cerrar();
 });
