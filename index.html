@@ -350,7 +350,7 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .acc-btn.cobrar{background:var(--tinta);border-color:var(--tinta);color:#fff;font-weight:600}
 .acc-btn.cobrar i{color:var(--oro-claro)}
 .acc-btn.cobrar:hover{background:#000}
-.acc-btn.via{min-height:58px;text-transform:capitalize}
+.acc-btn.via{min-height:58px}
 .acc-btn:focus-visible{outline:2px solid var(--oro);outline-offset:2px}
 .acc-btn[disabled]{opacity:.45;cursor:not-allowed}
 .acc-btn[disabled]:hover{border-color:var(--linea2);background:#fff}
@@ -459,6 +459,7 @@ const SERVICIOS_INI = [
   {n:'Lavado Black',         d:1, p:250},
   {n:'Lavado Platinum',      d:1, p:350},
   {n:'Lavado de motor',      d:1, p:90},
+  {n:'Pulido',               d:2, p:0},
   {n:'Pulido + cerámico',    d:3, p:800},
   {n:'PPF Full Front', sena:true,       d:3, p:1800},
   {n:'PPF Full Body', sena:true,        d:7, p:4200},
@@ -504,27 +505,37 @@ const ESTADOS = {reservado:'Reservado',curso:'En curso',espera:'Esperando',
 const CATEGORIAS = {material:'Material (PPF, vinilos, químicos)',
   fijo:'Fijos (alquiler, luz, agua, alarma)', personal:'Personal y horas de terceros',
   prestamo:'Préstamos', marketing:'Publicidad', otro:'Otros'};
-const VIAS = ['efectivo','transferencia','tarjeta','banco'];   // gastos
+const VIAS = ['Efectivo','Transferencia','Débito','Crédito','Banco'];   // gastos
 /* Para cobrar solo hay tres. 'banco' es una salida, no una entrada.
    El efectivo no genera IVA ni IRPF; los otros dos sí. */
-const VIAS_COBRO = ['efectivo','transferencia','tarjeta'];
-const llevaImpuestos = v => v!=='efectivo';
+const VIAS_COBRO = ['Efectivo','Transferencia','Débito','Crédito'];
+/* Solo el efectivo queda fuera de IVA e IRPF. Se compara en minúsculas
+   para que los cobros ya guardados como 'efectivo' sigan valiendo. */
+const llevaImpuestos = v => String(v||'').toLowerCase() !== 'efectivo';
 
 /* Tipos fiscales. Van en los datos y se editan en Ajustes: los fija la
    gestoría, no el programa. Los valores de partida son los que nos pasó
    Joaquín; conviene que su asesor los confirme antes de fiarse. */
-const FISCAL_INI = {iva:21, irpf:20, viasFacturadas:['transferencia','tarjeta','banco']};
+const FISCAL_INI = {iva:21, irpf:20, viasFacturadas:['transferencia','tarjeta','debito','credito','banco']};
 const fiscal = () => D.fiscal || FISCAL_INI;
 
 /** ¿Este cobro va con factura? Por defecto, todo lo que no es efectivo. */
 const esFacturado = c =>
-  c.facturado !== undefined ? !!c.facturado : fiscal().viasFacturadas.includes(c.via);
+  c.facturado !== undefined ? !!c.facturado
+    : fiscal().viasFacturadas.includes(String(c.via||'').toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,''));
 
 /** Base imponible: si lleva factura, el importe cobrado incluye el IVA. */
 const baseDe = c => esFacturado(c) ? (c.importe||0)/(1+fiscal().iva/100) : (c.importe||0);
 const ivaDe  = c => esFacturado(c) ? (c.importe||0) - baseDe(c) : 0;
 
 const TRIMESTRE = f => Math.floor(aFecha(f).getMonth()/3)+1;
+
+/* Los movimientos importados de 2026 traen las vías en minúscula y alguna
+   'tarjeta' antigua. Se normaliza solo al mostrarlas. */
+const VIA_BONITA = {efectivo:'Efectivo', transferencia:'Transferencia',
+  tarjeta:'Crédito', debito:'Débito', credito:'Crédito', banco:'Banco'};
+const via = v => VIA_BONITA[String(v||'').toLowerCase()] || v || '—';
 
 /** Cuentas del trimestre: lo que hay que declarar y lo que queda limpio. */
 function trimestres(anio){
@@ -1028,7 +1039,7 @@ function vistaDinero(){
     <th style="text-align:right">Importe</th></tr></thead><tbody id="tb-ing">`
     + (ingA.length?ingA.map(c=>`<tr data-i="${c.id}" data-q="${esc((c.concepto||'').toLowerCase())}" style="cursor:pointer">
         <td>${esc(c.concepto)}${c.trabajoId?' <span class="pill">de un trabajo</span>':''}</td>
-        <td><span class="pill">${esc(c.via)}</span></td>
+        <td><span class="pill">${esc(via(c.via))}</span></td>
         <td class="num">${fCorta(aFecha(c.fecha))}</td>
         <td class="num pos">${eur(c.importe)} €</td></tr>`).join('')
       :`<tr><td colspan="4" class="vacio">Sin ingresos en ${anioSel}.</td></tr>`)
@@ -1303,7 +1314,7 @@ function abrirTrabajo(id, previo){
         ${pe>0?`<span class="saldo debe"> · faltan ${eur(pe)} €</span>`
           :(t.presupuesto>0?`<span class="saldo ok"> · cobrado</span>`:'')}</label>`
       + D.cobros.filter(c=>c.trabajoId===editT.id).map(c=>`<div class="cobro">
-          <span>${eur(c.importe)} €</span><span style="color:var(--dim)">${c.via}</span>
+          <span>${eur(c.importe)} €</span><span style="color:var(--dim)">${esc(via(c.via))}</span>
           <span style="color:var(--dim);font-family:var(--mono);font-size:11px">${fCorta(aFecha(c.fecha))}</span>
           <button class="x" data-quitar="${c.id}" aria-label="Quitar cobro">×</button></div>`).join('')
       + `<div class="cobro-nuevo">
@@ -1406,12 +1417,12 @@ function abrirTrabajo(id, previo){
       <label><input type="checkbox" id="s-cobrada"> Cobrar ${editT?'la':'ahora la'} señal del 50 %</label>
       <div class="mini-form" style="grid-template-columns:1fr 1fr">
         <input type="number" id="s-imp" value="${mitad||''}" placeholder="Importe" inputmode="decimal">
-        <select id="s-via">${VIAS_COBRO.map(v=>`<option${v==='transferencia'?' selected':''}>${v}</option>`).join('')}</select>
+        <select id="s-via">${VIAS_COBRO.map(v=>`<option${v==='Transferencia'?' selected':''}>${v}</option>`).join('')}</select>
       </div>
       <p>El PPF y el vinilo se cobran a la mitad para apartar material y bloquear la plaza.</p>
     </div>`;
   }
-  let senaMarcada=false, senaVia='transferencia';
+  let senaMarcada=false, senaVia='Transferencia';
   function pintarSenaConEstado(){
     const chk=$('#s-cobrada'), via=$('#s-via');
     if(chk) senaMarcada=chk.checked;
@@ -1648,7 +1659,7 @@ function abrirCobroRapido(trabajoId, sugerido){
 let editG=null;
 function abrirGasto(id){
   editG = id ? D.gastos.find(g=>g.id===id) : null;
-  const g = editG || {fecha:aIso(hoy),concepto:'',importe:0,via:'efectivo',categoria:'material'};
+  const g = editG || {fecha:aIso(hoy),concepto:'',importe:0,via:'Efectivo',categoria:'material'};
   $('#hojaC').innerHTML = `<h3>${editG?'Editar gasto':'Nuevo gasto'}</h3>
     <div class="campo"><label for="g-con">Concepto</label>
       <input id="g-con" value="${esc(g.concepto)}" placeholder="Bobinas PPF" autocomplete="off"></div>
@@ -1662,7 +1673,7 @@ function abrirGasto(id){
         <select id="g-cat">${Object.entries(CATEGORIAS)
           .map(([k,v])=>`<option value="${k}"${k===g.categoria?' selected':''}>${v}</option>`).join('')}</select></div>
       <div class="campo"><label for="g-via">Pagado con</label>
-        <select id="g-via">${VIAS.map(v=>`<option${v===g.via?' selected':''}>${v}</option>`).join('')}</select></div></div>
+        <select id="g-via">${VIAS.map(v=>`<option${v===via(g.via)?' selected':''}>${v}</option>`).join('')}</select></div></div>
     <div class="campo"><label for="g-fact">¿Tienes factura?</label>
       <select id="g-fact">
         <option value="1"${g.conFactura!==false?' selected':''}>Sí, el IVA se puede desgravar</option>
@@ -1693,7 +1704,7 @@ function cerrar(){ $('#hoja').classList.remove('on'); editT=editG=null; }
 let editI=null;
 function abrirIngreso(id){
   editI = id ? D.cobros.find(c=>c.id===id) : null;
-  const c = editI || {fecha:aIso(hoy),concepto:'',importe:0,via:'efectivo',trabajoId:null};
+  const c = editI || {fecha:aIso(hoy),concepto:'',importe:0,via:'Efectivo',trabajoId:null};
   $('#hojaC').innerHTML = `<h3>${editI?'Editar ingreso':'Nuevo ingreso'}</h3>
     <div class="campo"><label for="i-con">Concepto</label>
       <input id="i-con" value="${esc(c.concepto)}" placeholder="Range Rover · pulido" autocomplete="off"></div>
@@ -1704,7 +1715,7 @@ function abrirIngreso(id){
         <input type="date" id="i-fecha" value="${c.fecha}"></div></div>
     <div class="fila2">
       <div class="campo"><label for="i-via">Cobrado con</label>
-        <select id="i-via">${VIAS_COBRO.map(v=>`<option${v===c.via?' selected':''}>${v}</option>`).join('')}</select></div>
+        <select id="i-via">${VIAS_COBRO.map(v=>`<option${v===via(c.via)?' selected':''}>${v}</option>`).join('')}</select></div>
       <div class="campo"><label for="i-fact">¿Se factura?</label>
         <select id="i-fact">
           <option value="1"${esFacturado(c)?' selected':''}>Sí · IVA e IRPF</option>
@@ -1752,7 +1763,7 @@ function abrirIngreso(id){
 let editF=null;
 function abrirFijo(id){
   editF = id ? D.fijos.find(f=>f.id===id) : null;
-  const f = editF || {concepto:'',importe:0,dia:1,via:'banco',categoria:'fijo'};
+  const f = editF || {concepto:'',importe:0,dia:1,via:'Banco',categoria:'fijo'};
   $('#hojaC').innerHTML = `<h3>${editF?'Editar gasto fijo':'Nuevo gasto fijo'}</h3>
     <div class="campo"><label for="f-con">Concepto</label>
       <input id="f-con" value="${esc(f.concepto)}" placeholder="Alquiler nave" autocomplete="off"></div>
@@ -1765,7 +1776,7 @@ function abrirFijo(id){
       <div class="campo"><label for="f-cat">Categoría</label>
         <select id="f-cat">${Object.entries(CATEGORIAS).map(([k,v])=>`<option value="${k}"${k===f.categoria?' selected':''}>${v}</option>`).join('')}</select></div>
       <div class="campo"><label for="f-via">Pagado con</label>
-        <select id="f-via">${VIAS.map(v=>`<option${v===f.via?' selected':''}>${v}</option>`).join('')}</select></div></div>
+        <select id="f-via">${VIAS.map(v=>`<option${v===via(f.via)?' selected':''}>${v}</option>`).join('')}</select></div></div>
     <div class="acc">
       <button class="btn" type="button" data-cerrar>Cancelar</button>
       ${editF?`<button class="btn borrar" type="button" id="f-del">Eliminar</button>`:''}
@@ -1879,7 +1890,7 @@ function generarFijos(){
   const ya=new Set(D.gastos.filter(g=>String(g.fecha).startsWith(marca)&&g.origenFijo).map(g=>g.origenFijo));
   const falta=D.fijos.filter(f=>!ya.has(f.id));
   falta.forEach(f=>D.gastos.push({id:nid(),fecha:`${marca}-${p2(Math.min(28,f.dia||1))}`,
-    concepto:f.concepto,importe:f.importe,via:f.via||'banco',categoria:f.categoria||'fijo',origenFijo:f.id}));
+    concepto:f.concepto,importe:f.importe,via:f.via||'Banco',categoria:f.categoria||'fijo',origenFijo:f.id}));
   guardar(); pintar();
   alert(falta.length?`Se han añadido ${falta.length} gastos fijos de este mes.`
                     :'Los fijos de este mes ya estaban puestos.');
