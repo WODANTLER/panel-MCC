@@ -148,7 +148,8 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
                 60%{box-shadow:0 0 0 7px rgba(190,59,38,0)}}
 .res.bloqueo{background:repeating-linear-gradient(45deg,
   #F1F1ED 0 6px, #FAFAF8 6px 12px);
-  border-color:var(--linea2);color:var(--dim);cursor:default}
+  border-color:var(--linea2);color:var(--dim);
+  pointer-events:none}          /* deja pasar el toque a la fila de debajo */
 
 .leyenda{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:11.5px;color:var(--dim)}
 .leyenda span{display:flex;align-items:center;gap:6px}
@@ -262,7 +263,13 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
   font-family:var(--mono);font-size:10px;font-weight:600;color:var(--alerta)}
 /* Coche metido en la plaza de reserva: se permite, pero se ve que es
    una excepción y que esa plaza ya no está libre para imprevistos. */
+/* Coche metido en la plaza de reserva: se permite, pero se ve que es una
+   excepción y que ya no queda colchón para un imprevisto. */
 .res.enreserva{box-shadow:inset 0 0 0 2px var(--alerta)}
+.fila-reserva .rej-et{background:var(--alerta-suave)}
+.fila-reserva .rej-et b{color:var(--alerta)}
+.fila-reserva .rej-cel{background:rgba(190,59,38,.035)}
+.fila-reserva .rej-cel.fuera{background:rgba(190,59,38,.02)}
 
 @media(max-width:560px){
   .rej-pista{height:38px}
@@ -849,7 +856,8 @@ function vistaPlazas(){
     h+=`</div></div>`;
 
     plazas().forEach(p=>{
-      h+=`<div class="rej-fila"><div class="rej-et"><b>${p.nom}</b><i>${p.uso.toUpperCase()}</i></div>`;
+      h+=`<div class="rej-fila${p.libre?' fila-reserva':''}">
+            <div class="rej-et"><b>${p.nom}</b><i>${p.uso.toUpperCase()}</i></div>`;
       h+=`<div class="rej-pista" data-plaza="${p.id}" data-lunes="${aIso(l)}">`;
       for(let i2=0;i2<7;i2++){
         const d=sumar(l,i2);
@@ -1941,7 +1949,9 @@ function pintar(){
     });
   });
   c.querySelectorAll('.rej-pista[data-plaza]').forEach(p=>p.addEventListener('click',ev=>{
-    if(ev.target.closest('.res')) return;
+    // .bloqueo es la banda rayada de la plaza de reserva: ocupa toda la
+    // fila y estaba tragándose los toques. Se ignora a propósito.
+    if(ev.target.closest('.res:not(.bloqueo)')) return;
     const plaza=+p.dataset.plaza;
     const r=p.getBoundingClientRect();
     const col=Math.max(0, Math.min(6, Math.floor(((ev.clientX-r.left)/r.width)*7)));
