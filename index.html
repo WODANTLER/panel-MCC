@@ -260,6 +260,9 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 /* movido de fecha: hay que llamar al cliente */
 .res.avisar::after{content:"!";position:absolute;top:2px;right:4px;
   font-family:var(--mono);font-size:10px;font-weight:600;color:var(--alerta)}
+/* Coche metido en la plaza de reserva: se permite, pero se ve que es
+   una excepción y que esa plaza ya no está libre para imprevistos. */
+.res.enreserva{box-shadow:inset 0 0 0 2px var(--alerta)}
 
 @media(max-width:560px){
   .rej-pista{height:38px}
@@ -400,7 +403,7 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
     </div>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true"  data-v="plazas">Plazas</button>
-      <button class="tab" role="tab" aria-selected="false" data-v="dinero">Dinero</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="dinero">Wallet</button>
       <button class="tab" role="tab" aria-selected="false" data-v="clientes">Clientes</button>
       <button class="tab" role="tab" aria-selected="false" data-v="registro">Registro</button>
       <button class="tab" role="tab" aria-selected="false" data-v="ajustes">Ajustes</button>
@@ -809,7 +812,7 @@ function vistaPlazas(){
     <button class="btn mini" data-mes="hoy" style="margin-left:auto">Hoy</button>
   </div>`;
 
-  const INI=['L','M','X','J','V','S','D'];
+  const INI=['lun','mar','mié','jue','vie','sáb','dom'];
 
   for(let w=0; w<semanas; w++){
     const l=sumar(ini,w*7), f=sumar(l,6);
@@ -853,7 +856,7 @@ function vistaPlazas(){
         h+=`<div class="rej-cel${d.getMonth()!==mes?' fuera':''}${d.getTime()===hoy.getTime()?' hoy':''}"></div>`;
       }
       if(p.libre && !D.trabajos.some(t=>t.plaza===p.id && salida(t)>=l && aFecha(t.entra)<=f)){
-        h+=`<div class="res bloqueo" style="left:0;width:100%"><b>Reservada para imprevistos</b></div>`;
+        h+=`<div class="res bloqueo" style="left:0;width:100%"><b>Libre para imprevistos · tócala para usarla</b></div>`;
       }
       D.trabajos.filter(t=>t.plaza===p.id).forEach(t=>{
         const e=aFecha(t.entra), sa=salida(t);
@@ -863,7 +866,7 @@ function vistaPlazas(){
         const n=d1-d0+1; if(n<=0) return;
         const viene=e<l, sigue=sa>f;                // el trabajo cruza la semana
         const pd=t.presupuesto?Math.round(t.presupuesto/Math.max(1,t.dias)):0;
-        h+=`<button class="res ${t.estado}${viene?' viene':''}${sigue?' sigue':''}${t.avisarCliente?' avisar':''}" data-t="${t.id}"
+        h+=`<button class="res ${t.estado}${viene?' viene':''}${sigue?' sigue':''}${t.avisarCliente?' avisar':''}${p.libre?' enreserva':''}" data-t="${t.id}"
               style="left:${(d0/7*100).toFixed(4)}%;width:${(n/7*100).toFixed(4)}%"
               title="${esc(t.coche)} · ${esc(t.servicio)} · ${fCorta(e)} a ${fCorta(sa)}">
               <b>${esc(t.coche)}</b>`
@@ -1867,7 +1870,7 @@ function importar(file){
       if(j.fiscal) await DOC_FISCAL().set(j.fiscal, {merge:true});
       vista='dinero'; anioSel=null;      // los cobros y gastos se ven aquí
       pintar();
-      alert(`Cargados ${n} registros. Los tienes en la pestaña Dinero.`);
+      alert(`Cargados ${n} registros. Los tienes en la pestaña Wallet.`);
     }catch(e){
       console.warn(e);
       alert('Se ha cortado la carga: '+(e.code||e.message));
@@ -1940,7 +1943,6 @@ function pintar(){
   c.querySelectorAll('.rej-pista[data-plaza]').forEach(p=>p.addEventListener('click',ev=>{
     if(ev.target.closest('.res')) return;
     const plaza=+p.dataset.plaza;
-    if(esLibre(plaza) && !confirm('Esa plaza está reservada para imprevistos.\n¿Seguro que quieres usarla?')) return;
     const r=p.getBoundingClientRect();
     const col=Math.max(0, Math.min(6, Math.floor(((ev.clientX-r.left)/r.width)*7)));
     abrirTrabajo(null,{plaza, entra:aIso(sumar(aFecha(p.dataset.lunes), col))});
