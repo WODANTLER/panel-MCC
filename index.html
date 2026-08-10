@@ -289,7 +289,18 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .cobro .x{margin-left:auto;background:none;border:0;color:var(--dim);cursor:pointer;
   font-size:18px;line-height:1;padding:2px 8px}
 .cobro .x:hover{color:var(--alerta)}
-.mini-form{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:10px}
+.mini-form{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:10px;
+  align-items:end}
+.mini-et{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.mini-form input,.mini-form select{width:100%;background:#fff;border:1px solid var(--linea2);
+  color:var(--tinta);font-family:var(--sans);font-size:15px;padding:9px 10px}
+.mini-form input:focus,.mini-form select:focus{outline:0;border-color:var(--oro);
+  box-shadow:0 0 0 3px var(--oro-suave)}
+.cobro-nuevo{margin-top:4px}
+.mini-nota{margin:8px 0 0;font-size:12px;line-height:1.4}
+.mini-nota.con{color:var(--oro)}
+.mini-nota.sin{color:var(--dim)}
 .anio{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
 .buscar{flex:1;min-width:150px;background:#fff;border:1px solid var(--linea2);
   color:var(--tinta);font-family:var(--sans);font-size:14px;padding:7px 11px}
@@ -476,6 +487,15 @@ const plazas      = () => D.plazas || [];
 const esLibre     = id => !!(plazas().find(p=>p.id===+id)||{}).libre;
 const reservables = () => plazas().filter(p=>!p.libre);
 const servicios   = () => D.servicios || [];
+/* Alfabético, pero con "Otro" siempre al final: es el cajón de sastre y
+   en medio de la lista estorba. Al ordenar por nombre, los lavados, los
+   PPF y los wrapping quedan agrupados solos por el prefijo. */
+function ordenServicios(a,b){
+  const A=(a.n||''), B=(b.n||'');
+  if(A==='Otro') return 1;
+  if(B==='Otro') return -1;
+  return A.localeCompare(B,'es',{sensitivity:'base'});
+}
 /* Solo el PPF y el vinilo se cobran al 50 % por adelantado: hay que apartar
    material y bloquear la plaza. El resto se cobra al entregar. */
 const pideSena = nom => !!(servicios().find(x=>x.n===nom)||{}).sena;
@@ -484,7 +504,11 @@ const ESTADOS = {reservado:'Reservado',curso:'En curso',espera:'Esperando',
 const CATEGORIAS = {material:'Material (PPF, vinilos, químicos)',
   fijo:'Fijos (alquiler, luz, agua, alarma)', personal:'Personal y horas de terceros',
   prestamo:'Préstamos', marketing:'Publicidad', otro:'Otros'};
-const VIAS = ['efectivo','transferencia','tarjeta','banco'];
+const VIAS = ['efectivo','transferencia','tarjeta','banco'];   // gastos
+/* Para cobrar solo hay tres. 'banco' es una salida, no una entrada.
+   El efectivo no genera IVA ni IRPF; los otros dos sí. */
+const VIAS_COBRO = ['efectivo','transferencia','tarjeta'];
+const llevaImpuestos = v => v!=='efectivo';
 
 /* Tipos fiscales. Van en los datos y se editan en Ajustes: los fija la
    gestoría, no el programa. Los valores de partida son los que nos pasó
@@ -610,6 +634,7 @@ function escuchar(alCargar){
         ? ({...d.data(), id:Number(d.id)})
         : ({id:d.id, ...d.data()}));
       if(col==='plazas') D.plazas.sort((a,b)=>a.id-b.id);
+      if(col==='servicios') D.servicios.sort(ordenServicios);
       if(pendientes > 0){ pendientes--; if(pendientes === 0){ listo = true; alCargar(); } }
       else if(listo) pintar();
     }, e => {
@@ -683,7 +708,7 @@ function semilla(){
      el botón Importar. */
   D.fiscal    = {...FISCAL_INI};
   D.plazas    = PLAZAS_INI.map(p=>({...p}));
-  D.servicios = SERVICIOS_INI.map(x=>({...x, id:nid()}));
+  D.servicios = SERVICIOS_INI.map(x=>({...x, id:nid()})).sort(ordenServicios);
   D.trabajos = []; D.cobros = []; D.gastos = []; D.clientes = []; D.fijos = [];
 }
 
@@ -1281,10 +1306,16 @@ function abrirTrabajo(id, previo){
           <span>${eur(c.importe)} €</span><span style="color:var(--dim)">${c.via}</span>
           <span style="color:var(--dim);font-family:var(--mono);font-size:11px">${fCorta(aFecha(c.fecha))}</span>
           <button class="x" data-quitar="${c.id}" aria-label="Quitar cobro">×</button></div>`).join('')
-      + `<div class="mini-form">
-          <input type="number" id="c-imp" placeholder="Importe" inputmode="decimal">
-          <select id="c-via">${VIAS.map(v=>`<option>${v}</option>`).join('')}</select>
-          <button class="btn mini" id="c-add" type="button">Añadir</button></div></div>`;
+      + `<div class="cobro-nuevo">
+          <div class="mini-form">
+            <div><label class="mini-et" for="c-imp">Importe (€)</label>
+              <input type="number" id="c-imp" placeholder="100" inputmode="decimal"></div>
+            <div><label class="mini-et" for="c-via">Cómo ha pagado</label>
+              <select id="c-via">${VIAS_COBRO.map(v=>`<option>${v}</option>`).join('')}</select></div>
+            <button class="btn mini" id="c-add" type="button">Añadir</button>
+          </div>
+          <p class="mini-nota" id="c-nota"></p>
+        </div></div>`;
   }
 
   $('#hojaC').innerHTML = `<h3>${editT?'Editar trabajo':'Nuevo trabajo'}</h3>
@@ -1375,7 +1406,7 @@ function abrirTrabajo(id, previo){
       <label><input type="checkbox" id="s-cobrada"> Cobrar ${editT?'la':'ahora la'} señal del 50 %</label>
       <div class="mini-form" style="grid-template-columns:1fr 1fr">
         <input type="number" id="s-imp" value="${mitad||''}" placeholder="Importe" inputmode="decimal">
-        <select id="s-via">${VIAS.map(v=>`<option${v==='transferencia'?' selected':''}>${v}</option>`).join('')}</select>
+        <select id="s-via">${VIAS_COBRO.map(v=>`<option${v==='transferencia'?' selected':''}>${v}</option>`).join('')}</select>
       </div>
       <p>El PPF y el vinilo se cobran a la mitad para apartar material y bloquear la plaza.</p>
     </div>`;
@@ -1408,9 +1439,21 @@ function abrirTrabajo(id, previo){
     D.trabajos=D.trabajos.filter(x=>x.id!==editT.id);
     cerrar(); guardar(); pintar();
   });
+  function notaCobro(){
+    const via=$('#c-via'), n=$('#c-nota');
+    if(!via||!n) return;
+    n.className='mini-nota '+(llevaImpuestos(via.value)?'con':'sin');
+    n.textContent = llevaImpuestos(via.value)
+      ? `Se factura: lleva ${fiscal().iva} % de IVA y cuenta para el IRPF.`
+      : 'En efectivo: no lleva IVA ni cuenta para el IRPF.';
+  }
+  const selVia=$('#c-via'); if(selVia){ selVia.addEventListener('change',notaCobro); notaCobro(); }
+
   const add=$('#c-add'); if(add) add.addEventListener('click',()=>{
     const v=+$('#c-imp').value; if(!v) return;
-    D.cobros.push({id:nid(),trabajoId:editT.id,importe:v,via:$('#c-via').value,
+    const via=$('#c-via').value;
+    D.cobros.push({id:nid(),trabajoId:editT.id,importe:v,via,
+      facturado:llevaImpuestos(via),
       fecha:aIso(hoy),concepto:`${editT.coche} · ${editT.servicio}`});
     guardar(); abrirTrabajo(editT.id); pintar();
   });
@@ -1586,15 +1629,16 @@ function abrirCobroRapido(trabajoId, sugerido){
   $('#hojaC').innerHTML = `<h3>Cobrar · ${esc(t.coche)}</h3>
     <div class="campo"><label for="cr-imp">Importe (€)</label>
       <input type="number" id="cr-imp" value="${sugerido||''}" inputmode="decimal"></div>
-    <div class="campo"><label>Forma de pago</label>
-      <div class="acc-grid">${VIAS.map(v=>`<button class="acc-btn via${v==='efectivo'?' ahora':''}" data-via="${v}">
-        <span>${v}</span></button>`).join('')}</div></div>
+    <div class="campo"><label>Cómo ha pagado</label>
+      <div class="acc-grid tres">${VIAS_COBRO.map(v=>`<button class="acc-btn via" data-via="${v}">
+        <span>${v}</span><em>${llevaImpuestos(v)?'con IVA':'sin IVA'}</em></button>`).join('')}</div></div>
     <div class="acc"><button class="btn" type="button" data-cerrar>Cancelar</button></div>`;
   $('#hoja').classList.add('on');
   $('#hojaC').querySelectorAll('[data-via]').forEach(b=>b.addEventListener('click',()=>{
     const imp=+$('#cr-imp').value||0;
     if(!imp){ $('#cr-imp').focus(); return; }
     D.cobros.push({id:nid(), trabajoId:t.id, importe:imp, via:b.dataset.via,
+      facturado:llevaImpuestos(b.dataset.via),
       fecha:aIso(hoy), concepto:`${t.coche} · ${t.servicio}`});
     cerrar(); guardar(); pintar();
   }));
@@ -1660,7 +1704,7 @@ function abrirIngreso(id){
         <input type="date" id="i-fecha" value="${c.fecha}"></div></div>
     <div class="fila2">
       <div class="campo"><label for="i-via">Cobrado con</label>
-        <select id="i-via">${VIAS.map(v=>`<option${v===c.via?' selected':''}>${v}</option>`).join('')}</select></div>
+        <select id="i-via">${VIAS_COBRO.map(v=>`<option${v===c.via?' selected':''}>${v}</option>`).join('')}</select></div>
       <div class="campo"><label for="i-fact">¿Se factura?</label>
         <select id="i-fact">
           <option value="1"${esFacturado(c)?' selected':''}>Sí · IVA e IRPF</option>
@@ -1765,7 +1809,7 @@ function vistaAjustes(){
     <div class="anio"><button class="btn mini" data-acc="servicio">+ Servicio</button></div>
   <table class="tabla"><thead><tr><th>Servicio</th>
     <th style="text-align:right">Días</th><th style="text-align:right">Precio sin IVA</th></tr></thead><tbody>`
-    + servicios().map(x=>`<tr data-s="${x.id}" style="cursor:pointer">
+    + [...servicios()].sort(ordenServicios).map(x=>`<tr data-s="${x.id}" style="cursor:pointer">
         <td>${esc(x.n)}</td><td class="num">${x.d}</td>
         <td class="num">${x.p?eur(x.p)+' €':'a presupuestar'}</td></tr>`).join('')
     + `</tbody></table>`;
@@ -2039,7 +2083,7 @@ auth.onAuthStateChanged(async user=>{
   try{ const f = await DOC_FISCAL().get(); if(f.exists) D.fiscal = f.data(); }catch(e){}
   escuchar(()=>{
     if(!D.plazas || !D.plazas.length)       D.plazas    = PLAZAS_INI.map(p=>({...p}));
-    if(!D.servicios || !D.servicios.length) D.servicios = SERVICIOS_INI.map(x=>({...x,id:nid()}));
+    if(!D.servicios || !D.servicios.length) D.servicios = SERVICIOS_INI.map(x=>({...x,id:nid()})).sort(ordenServicios);
     if(!D.clientes) D.clientes=[];
     if(!D.fiscal)   D.fiscal={...FISCAL_INI};
     if(D.fiscal.irpf===19) D.fiscal.irpf=20;
