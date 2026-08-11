@@ -127,7 +127,8 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
   z-index:2;pointer-events:none}
 
 /* barras de reserva */
-.res{position:absolute;top:5px;bottom:5px;border-radius:2px;cursor:pointer;
+.res{position:absolute;top:5px;bottom:5px;border-radius:2px;cursor:grab;
+  touch-action:pan-y;   /* el dedo en vertical desplaza la página; en horizontal, arrastra */
   display:flex;align-items:center;padding:0 8px;gap:6px;overflow:hidden;
   border:1px solid transparent;transition:transform .14s,box-shadow .14s;z-index:1}
 .res:hover{box-shadow:0 3px 10px rgba(20,20,26,.16);transform:translateY(-1px)}
@@ -146,6 +147,8 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 }
 @keyframes late{0%,100%{box-shadow:0 0 0 0 rgba(190,59,38,.45)}
                 60%{box-shadow:0 0 0 7px rgba(190,59,38,0)}}
+.res.arrastrando{cursor:grabbing;z-index:20;opacity:.92;
+  box-shadow:0 8px 22px rgba(20,20,26,.28);transition:none}
 .res.bloqueo{background:repeating-linear-gradient(45deg,
   #F1F1ED 0 6px, #FAFAF8 6px 12px);
   border-color:var(--linea2);color:var(--dim);
@@ -1876,6 +1879,80 @@ function guardarTrabajo(){
   cerrar(); guardar(); pintar();
 }
 
+/* ─── arrastrar trabajos en el calendario ──────────────────────────────
+   Un toque abre el panel de acciones; si se arrastra, se mueve de día o
+   de plaza. Se distingue por la distancia recorrida, así que en la tablet
+   un toque sigue siendo un toque.
+   La pista mide siempre 7 columnas, así que el día bajo el dedo sale de
+   la proporción, no de un ancho fijo en píxeles.                      */
+function diaEnPista(pista, clientX){
+  const r = pista.getBoundingClientRect();
+  const col = Math.max(0, Math.min(6, Math.floor(((clientX - r.left) / r.width) * 7)));
+  return sumar(aFecha(pista.dataset.lunes), col);
+}
+
+function montarArrastre(el){
+  let t0=null, x0=0, y0=0, origen=null, moviendo=false;
+
+  el.addEventListener('pointerdown', ev=>{
+    if(ev.button !== undefined && ev.button !== 0) return;
+    t0 = D.trabajos.find(x=>x.id===el.dataset.t);
+    if(!t0) return;
+    const pista = el.closest('.rej-pista');
+    if(!pista) return;
+    x0=ev.clientX; y0=ev.clientY;
+    origen = diaEnPista(pista, ev.clientX);
+    moviendo=false;
+    el.setPointerCapture(ev.pointerId);
+  });
+
+  el.addEventListener('pointermove', ev=>{
+    if(!t0) return;
+    const dx=ev.clientX-x0, dy=ev.clientY-y0;
+    if(!moviendo && Math.abs(dx)+Math.abs(dy) < 6) return;   // todavía es un toque
+    moviendo=true;
+    ev.preventDefault();
+    el.classList.add('arrastrando');
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+  });
+
+  el.addEventListener('pointerup', ev=>{
+    if(!t0) return;
+    const trabajo=t0, desdeDia=origen;
+    t0=null;
+    el.classList.remove('arrastrando');
+    el.style.transform='';
+
+    if(!moviendo){ abrirAcciones(el.dataset.t); return; }
+
+    // ¿sobre qué plaza y qué día se ha soltado?
+    el.style.pointerEvents='none';
+    const bajo = document.elementFromPoint(ev.clientX, ev.clientY);
+    el.style.pointerEvents='';
+    const pista = bajo && bajo.closest ? bajo.closest('.rej-pista') : null;
+    if(!pista) { pintar(); return; }
+
+    const hasta = diaEnPista(pista, ev.clientX);
+    const salto = diasEntre(desdeDia, hasta);
+    const nuevaPlaza = +pista.dataset.plaza;
+    if(salto===0 && nuevaPlaza===trabajo.plaza) return;      // no se movió
+
+    const nuevaEntra = aIso(sumar(aFecha(trabajo.entra), salto));
+    const choca = pisaA({...trabajo, plaza:nuevaPlaza}, nuevaEntra, trabajo.dias);
+    if(choca.length && !confirm(
+        `Ahí ya está ${choca.map(o=>o.coche).join(' y ')}.\n¿Lo pones igual?`)){
+      pintar(); return;
+    }
+    trabajo.entra = nuevaEntra;
+    trabajo.plaza = nuevaPlaza;
+    guardar(); pintar();
+  });
+
+  el.addEventListener('pointercancel', ()=>{
+    t0=null; el.classList.remove('arrastrando'); el.style.transform='';
+  });
+}
+
 /* ─── acciones rápidas ─────────────────────────────────────────────────
    Pensado para tablet: un toque en la barra abre esto, no el formulario
    entero. El 90 % de lo que hace Joaquin en el dia es cambiar el estado
@@ -2380,9 +2457,7 @@ function pintar(){
       : new Date(mesRef.getFullYear(), mesRef.getMonth()+ +b.dataset.mes, 1);
     pintar();
   }));
-  c.querySelectorAll('.res[data-t]').forEach(b=>b.addEventListener('click',e=>{
-    e.stopPropagation(); abrirAcciones(b.dataset.t);
-  }));
+  c.querySelectorAll('.res[data-t]').forEach(b=>montarArrastre(b));
   c.querySelectorAll('tr[data-t]').forEach(r=>r.addEventListener('click',()=>abrirTrabajo(r.dataset.t)));
   c.querySelectorAll('tr[data-g]').forEach(r=>r.addEventListener('click',()=>abrirGasto(r.dataset.g)));
   c.querySelectorAll('[data-anio]').forEach(b=>b.addEventListener('click',()=>{
