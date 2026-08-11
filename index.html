@@ -403,6 +403,14 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
   font-size:11px;color:var(--dim)}
 .rbloque-cab .flecha{padding:2px 9px;font-size:15px;line-height:1.1}
 .rbloque-cab .flecha[disabled]{opacity:.3;cursor:not-allowed}
+.tri-sel{display:flex;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  margin:2px 0 8px;width:100%}
+.tri-btn{flex:1;appearance:none;background:var(--panel);border:0;cursor:pointer;
+  padding:6px 4px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;
+  color:var(--dim);transition:background .16s,color .16s}
+.tri-btn:hover{background:#fff;color:var(--tinta)}
+.tri-btn.on{background:var(--oro-suave);color:var(--oro);font-weight:600}
+.tri-btn:focus-visible{outline:2px solid var(--oro);outline-offset:-2px}
 .rueda{width:100%;max-width:210px;height:auto;margin:4px 0 10px}
 .rueda circle{transition:opacity .16s}
 .rueda:hover circle{opacity:.55}
@@ -1044,6 +1052,7 @@ let triAbierto=null;             // trimestre con el detalle desplegado
 let plantillasAbiertas=false;    // lista de gastos fijos recurrentes
 let mesRueda=null;               // mes que muestra la rueda de la derecha
 let listaSel='ing';              // pestaña de movimientos visible
+let triRueda=null;               // trimestre de la rueda izquierda (null = año)
 let mesRef=new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 const $ = s => document.querySelector(s);
 
@@ -1249,7 +1258,13 @@ function vistaDinero(){
       </li>`).join('') + `</ul>`;
   };
 
-  const rAnio = reparto(d => d.getFullYear()===anioSel);
+  /* Rueda izquierda: el año entero o un trimestre suelto. Así se puede
+     mirar el mismo periodo que se liquida en Impuestos. */
+  const dentroPeriodo = d => d.getFullYear()===anioSel &&
+    (triRueda===null || Math.floor(d.getMonth()/3)+1===triRueda);
+  const rAnio = reparto(dentroPeriodo);
+  const etPeriodo = triRueda===null ? `Todo ${anioSel}`
+    : `T${triRueda} · ${['ene–mar','abr–jun','jul–sep','oct–dic'][triRueda-1]} ${anioSel}`;
 
   // mes de la rueda derecha: el actual si estamos en ese año, si no el último con datos
   const mesesConDatos = [...new Set(
@@ -1268,8 +1283,12 @@ function vistaDinero(){
 
   <div class="ruedas">
     <section class="rbloque">
-      <div class="rbloque-cab"><b>Todo ${anioSel}</b>
+      <div class="rbloque-cab"><b>${etPeriodo}</b>
         <span>${eur(rAnio.entra)} € entraron</span></div>
+      <div class="tri-sel">
+        <button class="tri-btn${triRueda===null?' on':''}" data-tri-rueda="">Año</button>
+        ${[1,2,3,4].map(t=>`<button class="tri-btn${triRueda===t?' on':''}" data-tri-rueda="${t}">T${t}</button>`).join('')}
+      </div>
       ${rueda(partesDe(rAnio), eur(rAnio.libre)+' €', 'queda limpio')}
       ${leyenda(rAnio)}
     </section>
@@ -1303,7 +1322,8 @@ function vistaDinero(){
     const total = lista.reduce((a,x)=>a+(x.importe||0),0);
     const meses = {};
     lista.forEach(x=>{ const m=aFecha(x.fecha).getMonth(); (meses[m]=meses[m]||[]).push(x); });
-    const orden = Object.keys(meses).map(Number).sort((a,b)=>b-a);
+    // Orden natural del calendario: el mes que viene aparece debajo.
+    const orden = Object.keys(meses).map(Number).sort((a,b)=>a-b);
 
     let out = `<div class="cab" style="margin-top:30px"><h2>${titulo}</h2>
       <span class="nota">${lista.length} movimiento${lista.length===1?'':'s'} · ${eur(total)} € en ${anioSel}</span></div>
@@ -1313,7 +1333,7 @@ function vistaDinero(){
 
     out += `<div id="tb-${id}">`;
     orden.forEach((m,i)=>{
-      const xs = meses[m].sort((a,b)=>a.fecha<b.fecha?1:-1);
+      const xs = meses[m].sort((a,b)=>a.fecha<b.fecha?-1:1);
       const sub = xs.reduce((a,x)=>a+(x.importe||0),0);
       const clave = id+'-'+m;
       // Cerrados de entrada: con tres listas, abrir el último mes de cada
@@ -1701,7 +1721,7 @@ function abrirCliente(id, nombre){
 
 /* ─── registro ─────────────────────────────────────────────────────── */
 function vistaRegistro(){
-  const todos = [...D.trabajos].sort((a,b)=>a.entra<b.entra?1:-1);
+  const todos = [...D.trabajos].sort((a,b)=>a.entra<b.entra?-1:1);
   const pendiente_ = todos.reduce((a,t)=>a+pendiente(t),0);
 
   // Agrupado por mes, con el año en la etiqueta: así al pasar a 2027 se
@@ -1712,7 +1732,7 @@ function vistaRegistro(){
     const k=`${d.getFullYear()}-${p2(d.getMonth()+1)}`;
     (meses[k]=meses[k]||[]).push(t);
   });
-  const claves = Object.keys(meses).sort().reverse();
+  const claves = Object.keys(meses).sort();   // cronológico hacia abajo
 
   let h=`<div class="cab"><h2>Todos los trabajos</h2>
     <span class="nota">${todos.length} trabajo${todos.length===1?'':'s'}${
@@ -2624,6 +2644,11 @@ function pintar(){
   c.querySelectorAll('tr[data-tri]').forEach(r=>r.addEventListener('click',()=>{
     const n=+r.dataset.tri;
     triAbierto = triAbierto===n ? null : n;
+    pintar();
+  }));
+  c.querySelectorAll('[data-tri-rueda]').forEach(b=>b.addEventListener('click',()=>{
+    const v=b.dataset.triRueda;
+    triRueda = v==='' ? null : +v;
     pintar();
   }));
   c.querySelectorAll('[data-lista]').forEach(b=>b.addEventListener('click',()=>{
