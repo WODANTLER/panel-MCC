@@ -250,11 +250,18 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
   display:flex;align-items:center;justify-content:center;gap:4px}
 .rej-cel:last-child{border-right:0}
 .rej-cel.fuera{background:#FAFAF8}
-.rej-cel.hoy{background:var(--oro-suave)}
+/* El día de hoy se marca con una línea arriba y una base suave, no
+   pintando la columna entera: así no parte el calendario en dos. */
+.rej-cel.hoy{background:linear-gradient(180deg,
+  rgba(143,106,42,.10) 0%, rgba(143,106,42,.03) 100%)}
+.rej-fila:first-child .rej-cel.hoy{box-shadow:inset 0 3px 0 0 var(--oro)}
+.rej-cel.hoy+.rej-cel{border-left:1px solid rgba(143,106,42,.35)}
+.rej-cel.hoy{border-right-color:rgba(143,106,42,.35)}
 .rej-dias .rej-cel{font-family:var(--mono);font-size:10px;color:var(--dim)}
 .rej-dias .rej-cel b{color:var(--tinta);font-weight:600;font-size:12.5px}
 .rej-dias .rej-cel.fuera b{color:var(--dim);font-weight:400}
 .rej-dias .rej-cel.hoy b{color:var(--oro)}
+.rej-dias .rej-cel.hoy span{color:var(--oro);font-weight:600}
 
 /* un trabajo que cruza de semana se parte: el borde plano avisa de que sigue */
 .res.viene{border-top-left-radius:0;border-bottom-left-radius:0;
@@ -339,6 +346,40 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .plantillas-cab em{margin-left:auto;font-style:normal;font-family:var(--mono);
   font-size:12.5px;font-weight:600;color:var(--oro)}
 .plantillas .tabla td{padding:8px 14px}
+
+/* ── selector de año ─────────────────────────────────────────────────── */
+.selanio{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:20px;
+  padding-bottom:12px;border-bottom:1px solid var(--linea)}
+.selanio-et{font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim)}
+.anio-btn{appearance:none;background:none;border:0;border-bottom:2px solid transparent;
+  padding:2px 4px 4px;cursor:pointer;color:var(--dim);
+  font-family:var(--display);font-variation-settings:'wdth' 80,'wght' 700;
+  font-size:22px;letter-spacing:.02em;transition:color .18s,border-color .18s}
+.anio-btn:hover{color:var(--tinta)}
+.anio-btn.on{color:var(--tinta);border-bottom-color:var(--oro)}
+.anio-btn:focus-visible{outline:2px solid var(--oro);outline-offset:3px}
+.selanio-nota{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--dim)}
+
+/* ── pestañas de las listas ──────────────────────────────────────────── */
+.subtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--linea);border:1px solid var(--linea);margin-bottom:2px}
+.subtab{appearance:none;background:var(--panel);border:0;cursor:pointer;
+  padding:11px 12px;text-align:left;display:flex;flex-direction:column;gap:3px;
+  border-bottom:2px solid transparent;transition:background .16s,border-color .16s}
+.subtab b{font-family:var(--display);font-variation-settings:'wdth' 84,'wght' 600;
+  font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.subtab em{font-style:normal;font-family:var(--mono);font-size:13.5px;color:var(--dim)}
+.subtab:hover{background:#fff}
+.subtab.on{background:#fff;border-bottom-color:var(--oro)}
+.subtab.on b{color:var(--tinta)}
+.subtab.on em{color:var(--oro);font-weight:600}
+.subtab:focus-visible{outline:2px solid var(--oro);outline-offset:-2px}
+@media(max-width:560px){
+  .subtab{padding:9px 8px}
+  .subtab b{font-size:10px;letter-spacing:.04em}
+  .subtab em{font-size:12px}
+}
 
 /* ── ruedas de reparto ───────────────────────────────────────────────── */
 .ruedas{display:grid;gap:14px;margin-bottom:8px}
@@ -993,6 +1034,7 @@ const mesesTocados=new Set();    // bloques donde el usuario ya eligió
 let triAbierto=null;             // trimestre con el detalle desplegado
 let plantillasAbiertas=false;    // lista de gastos fijos recurrentes
 let mesRueda=null;               // mes que muestra la rueda de la derecha
+let listaSel='ing';              // pestaña de movimientos visible
 let mesRef=new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 const $ = s => document.querySelector(s);
 
@@ -1132,10 +1174,10 @@ function vistaDinero(){
   const fijoMes=conMov.length?f.reduce((a,x)=>a+(x.cat.fijo||0),0)/conMov.length:0;
   const tope=Math.max(1,...f.map(x=>Math.max(x.ing,x.gas)));
 
-  let h=`<div class="anio">`
-    + as.map(a=>`<button class="btn mini${a===anioSel?' pri':''}" data-anio="${a}">${a}</button>`).join('')
-    + `<button class="btn mini" style="margin-left:auto" data-acc="gasto">+ Gasto</button>`
-    + `<button class="btn mini" data-acc="fijos">Generar fijos del mes</button></div>`;
+  let h=`<div class="selanio">
+      <span class="selanio-et">Año</span>
+      ${as.map(a=>`<button class="anio-btn${a===anioSel?' on':''}" data-anio="${a}">${a}</button>`).join('')}
+    </div>`;
 
   h+=`<div class="kpis">
     <div class="kpi destaca"><span class="et">Ingresos ${anioSel}</span>
@@ -1238,20 +1280,6 @@ function vistaDinero(){
 
   h+=`<div class="cab" style="margin-top:30px"><h2>Detalle por categoría</h2></div>`;
 
-  /* Ingresos, agrupados por mes igual que los gastos. */
-  const ingA = D.cobros.filter(c=>aFecha(c.fecha).getFullYear()===anioSel);
-  h += bloqueMovs({
-    lista: ingA, titulo:'Ingresos', id:'ing',
-    vacio:`Sin ingresos en ${anioSel}.`,
-    acciones:`<button class="btn mini" data-acc="ingreso">+ Ingreso</button>
-      <input class="buscar" id="q-ing" placeholder="Buscar por concepto…" autocomplete="off">`,
-    fila: c=>`<tr data-i="${c.id}" data-q="${esc((c.concepto||'').toLowerCase())}" style="cursor:pointer">
-      <td>${esc(c.concepto)}${c.trabajoId?' <span class="pill">de un trabajo</span>':''}</td>
-      <td><span class="pill">${esc(c.via)}</span>${
-        esFacturado(c)?'':' <span class="pill sinf">sin factura</span>'}</td>
-      <td class="num" style="color:var(--dim)">${fCorta(aFecha(c.fecha))}</td>
-      <td class="num pos">${eur(c.importe)} €</td></tr>`});
-
   /* ── gastos, separados en fijos y variables y agrupados por mes ─────
      Fijo es lo que se repite todos los meses; variable, lo que cambia.
      Agrupar por mes es lo que permite comparar y detectar el mes raro. */
@@ -1277,7 +1305,9 @@ function vistaDinero(){
       const xs = meses[m].sort((a,b)=>a.fecha<b.fecha?1:-1);
       const sub = xs.reduce((a,x)=>a+(x.importe||0),0);
       const clave = id+'-'+m;
-      const abierto = mesesAbiertos.has(clave) || (i===0 && !mesesTocados.has(id));
+      // Cerrados de entrada: con tres listas, abrir el último mes de cada
+      // una llenaba la pantalla antes de que nadie pidiera nada.
+      const abierto = mesesAbiertos.has(clave);
       out += `<section class="grupo${abierto?' abierto':''}">
         <button class="grupo-cab" data-mes-toggle="${clave}">
           <i>${abierto?'−':'+'}</i><b>${MESES[m]}</b>
@@ -1290,6 +1320,26 @@ function vistaDinero(){
     return out + `</div>`;
   }
 
+  /* ── listas en pestañas ────────────────────────────────────────────
+     Ingresos, variables y fijos comparten sitio: se ve una por vez y
+     Wallet deja de ser una tirada interminable.                       */
+  const ingA = D.cobros.filter(c=>aFecha(c.fecha).getFullYear()===anioSel);
+  const varA = gAnio.filter(g=>!esGastoFijo(g));
+  const fijA = gAnio.filter(esGastoFijo);
+  const suma = l => l.reduce((a,x)=>a+(x.importe||0),0);
+
+  const LISTAS = [
+    {id:'ing', n:'Ingresos',         total:suma(ingA)},
+    {id:'var', n:'Gastos variables', total:suma(varA)},
+    {id:'fij', n:'Gastos fijos',     total:suma(fijA)},
+  ];
+  if(!LISTAS.some(p=>p.id===listaSel)) listaSel='ing';
+
+  h += `<div class="cab" style="margin-top:34px"><h2>Movimientos de ${anioSel}</h2></div>
+    <nav class="subtabs">` + LISTAS.map(p=>`
+      <button class="subtab${p.id===listaSel?' on':''}" data-lista="${p.id}">
+        <b>${p.n}</b><em>${eur(p.total)} €</em></button>`).join('') + `</nav>`;
+
   const filaGasto = g=>`<tr data-g="${g.id}" data-q="${esc((g.concepto||'').toLowerCase())}" style="cursor:pointer">
       <td>${esc(g.concepto)}</td>
       <td><span class="pill">${g.categoria||'otro'}</span>${
@@ -1297,37 +1347,53 @@ function vistaDinero(){
       <td class="num" style="color:var(--dim)">${fCorta(aFecha(g.fecha))}</td>
       <td class="num">${eur(g.importe)} €</td></tr>`;
 
-  h += bloqueMovs({
-    lista: gAnio.filter(esGastoFijo), titulo:'Gastos fijos', id:'fij', fila:filaGasto,
-    vacio:`Sin gastos fijos en ${anioSel}.`,
-    acciones:`<button class="btn mini" data-acc="fijo">+ Plantilla</button>
-     <button class="btn mini" data-acc="generar">Generar los de este mes</button>
-     ${D.fijos.length?`<button class="btn mini" data-acc="verplantillas">${
-        plantillasAbiertas ? 'Ocultar plantillas'
-                           : `Ver plantillas (${D.fijos.length})`}</button>`:''}`});
-
-  if(D.fijos.length && plantillasAbiertas){
-    const totalPl = D.fijos.reduce((a,f)=>a+(f.importe||0),0);
-    h += `<section class="plantillas">
-      <div class="plantillas-cab">
-        <b>Plantillas</b>
-        <span>lo que se crea cada mes al pulsar «Generar»</span>
-        <em>${eur(totalPl)} €/mes</em>
-      </div>
-      <table class="tabla"><tbody>`
-      + [...D.fijos].sort((a,b)=>(b.importe||0)-(a.importe||0))
-        .map(f=>`<tr data-f="${f.id}" style="cursor:pointer">
-          <td>${esc(f.concepto)}</td>
-          <td class="num" style="color:var(--dim)">día ${f.dia||1}</td>
-          <td class="num">${eur(f.importe)} €</td></tr>`).join('')
-      + `</tbody></table></section>`;
+  if(listaSel==='ing'){
+    h += bloqueMovs({
+      lista: ingA, titulo:'Ingresos', id:'ing',
+      vacio:`Sin ingresos en ${anioSel}.`,
+      acciones:`<button class="btn mini" data-acc="ingreso">+ Ingreso</button>
+        <input class="buscar" id="q-ing" placeholder="Buscar por concepto…" autocomplete="off">`,
+      fila: c=>`<tr data-i="${c.id}" data-q="${esc((c.concepto||'').toLowerCase())}" style="cursor:pointer">
+        <td>${esc(c.concepto)}${c.trabajoId?' <span class="pill">de un trabajo</span>':''}</td>
+        <td><span class="pill">${esc(c.via)}</span>${
+          esFacturado(c)?'':' <span class="pill sinf">sin factura</span>'}</td>
+        <td class="num" style="color:var(--dim)">${fCorta(aFecha(c.fecha))}</td>
+        <td class="num pos">${eur(c.importe)} €</td></tr>`});
   }
 
-  h += bloqueMovs({
-    lista: gAnio.filter(g=>!esGastoFijo(g)), titulo:'Gastos variables', id:'var', fila:filaGasto,
-    vacio:`Sin gastos variables en ${anioSel}.`,
-    acciones:`<button class="btn mini" data-acc="gasto">+ Gasto</button>
-     <input class="buscar" id="q-gas" placeholder="Buscar por concepto…" autocomplete="off">`});
+  if(listaSel==='var'){
+    h += bloqueMovs({
+      lista: varA, titulo:'Gastos variables', id:'var', fila:filaGasto,
+      vacio:`Sin gastos variables en ${anioSel}.`,
+      acciones:`<button class="btn mini" data-acc="gasto">+ Gasto</button>
+        <input class="buscar" id="q-gas" placeholder="Buscar por concepto…" autocomplete="off">`});
+  }
+
+  if(listaSel==='fij'){
+    h += bloqueMovs({
+      lista: fijA, titulo:'Gastos fijos', id:'fij', fila:filaGasto,
+      vacio:`Sin gastos fijos en ${anioSel}.`,
+      acciones:`<button class="btn mini" data-acc="fijo">+ Plantilla</button>
+        <button class="btn mini" data-acc="generar">Generar los de este mes</button>
+        ${D.fijos.length?`<button class="btn mini" data-acc="verplantillas">${
+          plantillasAbiertas ? 'Ocultar plantillas'
+                             : `Ver plantillas (${D.fijos.length})`}</button>`:''}`});
+
+    if(D.fijos.length && plantillasAbiertas){
+      const totalPl = D.fijos.reduce((a,f)=>a+(f.importe||0),0);
+      h += `<section class="plantillas">
+        <div class="plantillas-cab"><b>Plantillas</b>
+          <span>lo que se crea cada mes al pulsar «Generar»</span>
+          <em>${eur(totalPl)} €/mes</em></div>
+        <table class="tabla"><tbody>`
+        + [...D.fijos].sort((a,b)=>(b.importe||0)-(a.importe||0))
+          .map(f=>`<tr data-f="${f.id}" style="cursor:pointer">
+            <td>${esc(f.concepto)}</td>
+            <td class="num" style="color:var(--dim)">día ${f.dia||1}</td>
+            <td class="num">${eur(f.importe)} €</td></tr>`).join('')
+        + `</tbody></table></section>`;
+    }
+  }
 
   return h;
 }
@@ -1355,10 +1421,11 @@ function vistaImpuestos(){
   const trimAhora = triActual ? tri[triActual-1] : null;
   const LIMITE=['20 de abril','20 de julio','20 de octubre','30 de enero'];
 
-  let h=`<div class="anio">`
-    + as.map(a=>`<button class="btn mini${a===anioSel?' pri':''}" data-anio="${a}">${a}</button>`).join('')
-    + `<span class="nota" style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--dim)">
-        IVA ${fiscal().iva} % · IRPF ${fiscal().irpf} % · se cambian en Ajustes</span></div>`;
+  let h=`<div class="selanio">
+      <span class="selanio-et">Año</span>
+      ${as.map(a=>`<button class="anio-btn${a===anioSel?' on':''}" data-anio="${a}">${a}</button>`).join('')}
+      <span class="selanio-nota">IVA ${fiscal().iva} % · IRPF ${fiscal().irpf} % · se cambian en Ajustes</span>
+    </div>`;
 
   h+=`<div class="kpis">
     <div class="kpi ${trimAhora && (Math.max(0,trimAhora.ivaPagar)+trimAhora.irpf)>0?'riesgo':'destaca'}">
@@ -2484,6 +2551,9 @@ function pintar(){
     const n=+r.dataset.tri;
     triAbierto = triAbierto===n ? null : n;
     pintar();
+  }));
+  c.querySelectorAll('[data-lista]').forEach(b=>b.addEventListener('click',()=>{
+    listaSel=b.dataset.lista; pintar();
   }));
   c.querySelectorAll('[data-rmes]').forEach(b=>b.addEventListener('click',()=>{
     const ms=[...new Set(D.cobros.concat(D.gastos)
