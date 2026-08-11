@@ -301,6 +301,26 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .mini-nota{margin:8px 0 0;font-size:12px;line-height:1.4}
 .mini-nota.con{color:var(--oro)}
 .mini-nota.sin{color:var(--dim)}
+
+/* ── gastos agrupados por mes ────────────────────────────────────────── */
+.grupo{border:1px solid var(--linea);border-bottom:0}
+.grupo:last-child{border-bottom:1px solid var(--linea)}
+.grupo-cab{width:100%;display:flex;align-items:center;gap:11px;
+  padding:11px 14px;background:var(--panel);border:0;cursor:pointer;
+  font-family:var(--sans);text-align:left;transition:background .16s}
+.grupo-cab:hover{background:var(--panel2)}
+.grupo-cab:focus-visible{outline:2px solid var(--oro);outline-offset:-2px}
+.grupo-cab i{font-style:normal;font-family:var(--mono);font-size:14px;color:var(--dim);
+  width:14px;flex:none;text-align:center}
+.grupo-cab b{font-family:var(--display);font-variation-settings:'wdth' 82,'wght' 700;
+  font-size:13px;letter-spacing:.06em;text-transform:uppercase;min-width:52px}
+.grupo-cab span{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.grupo-cab em{margin-left:auto;font-style:normal;font-family:var(--mono);
+  font-size:13.5px;font-weight:600}
+.grupo.abierto .grupo-cab{background:var(--oro-suave);border-bottom:1px solid var(--linea)}
+.grupo.abierto .grupo-cab i,.grupo.abierto .grupo-cab em{color:var(--oro)}
+.grupo .tabla td{padding:9px 14px}
+.pill.sinf{color:var(--alerta);border-color:#E9C4BC;background:var(--alerta-suave)}
 .anio{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
 .buscar{flex:1;min-width:150px;background:#fff;border:1px solid var(--linea2);
   color:var(--tinta);font-family:var(--sans);font-size:14px;padding:7px 11px}
@@ -531,6 +551,13 @@ const ivaDe  = c => esFacturado(c) ? (c.importe||0) - baseDe(c) : 0;
 
 const TRIMESTRE = f => Math.floor(aFecha(f).getMonth()/3)+1;
 
+/* Fijo o variable no es lo mismo que la categoría. Google Ads es Marketing
+   pero se paga todos los meses, así que para el taller es fijo. Manda la
+   marca del propio gasto; si no la tiene, se deduce. */
+const esGastoFijo = g => g.fijo !== undefined
+  ? !!g.fijo
+  : (!!g.origenFijo || g.categoria === 'fijo');
+
 /* Los movimientos importados de 2026 traen las vías en minúscula y alguna
    'tarjeta' antigua. Se normaliza solo al mostrarlas. */
 const VIA_BONITA = {efectivo:'Efectivo', transferencia:'Transferencia',
@@ -641,6 +668,11 @@ function escuchar(alCargar){
       /* Las plazas se referencian por número desde cada trabajo, así que
          su id tiene que seguir siendo el mismo número, no el que genere
          Firestore. Se guardan con id de documento '1', '2'… */
+      // Se refresca la huella: lo que ya no esté en el servidor deja de
+      // considerarse sincronizado y, sobre todo, no se vuelve a escribir.
+      [...sincronizado.keys()].forEach(k=>{ if(k.startsWith(col+'/')) sincronizado.delete(k); });
+      snap.docs.forEach(d=> sincronizado.set(huella(col, col==='plazas'?Number(d.id):d.id),
+                                             JSON.stringify(d.data())));
       D[col] = snap.docs.map(d => col==='plazas'
         ? ({...d.data(), id:Number(d.id)})
         : ({id:d.id, ...d.data()}));
@@ -668,20 +700,37 @@ async function grabar(col, obj){
 }
 async function borrarDoc(col, id){ await fs.collection(col).doc(id).delete(); }
 
-/* Compatibilidad: el resto del código llama a guardar() sin saber de esto.
-   Vuelca lo que haya en memoria a Firestore, documento a documento. */
+/* Huella de lo que ya está en el servidor. Sin esto, cada guardado
+   reescribía TODOS los documentos: además de lento, resucitaba lo que se
+   hubiera borrado desde la consola de Firebase. */
+const sincronizado = new Map();
+const huella = (col,id) => col+'/'+id;
+
 let guardando=null;
 function guardar(){
   clearTimeout(guardando);
   guardando = setTimeout(async ()=>{
     try{
+      let escritos=0;
       for(const col of COLECCIONES){
         for(const obj of (D[col]||[])){
-          if(obj._borrar) continue;
-          await grabar(col, obj);
+          const {id, ...limpio} = obj;
+          const cuerpo = JSON.stringify(limpio);
+          // Ya está igual en el servidor: no se toca.
+          if(id && sincronizado.get(huella(col,id)) === cuerpo) continue;
+          const nuevoId = await grabar(col, obj);
+          if(nuevoId && nuevoId !== id) obj.id = nuevoId;   // evita duplicar
+          sincronizado.set(huella(col, obj.id), cuerpo);
+          escritos++;
         }
       }
-      if(D.fiscal) await DOC_FISCAL().set(D.fiscal, {merge:true});
+      if(D.fiscal){
+        const f=JSON.stringify(D.fiscal);
+        if(sincronizado.get('config/fiscal')!==f){
+          await DOC_FISCAL().set(D.fiscal, {merge:true});
+          sincronizado.set('config/fiscal', f);
+        }
+      }
     }catch(e){ console.warn('no se pudo guardar', e); avisoError(e); }
   }, 500);
 }
@@ -806,6 +855,8 @@ function duraciones(){
 
 /* ─── estado de la interfaz ────────────────────────────────────────── */
 let vista='plazas', anioSel=null;
+const mesesAbiertos=new Set();   // meses desplegados en Wallet
+const mesesTocados=new Set();    // bloques donde el usuario ya eligió
 let mesRef=new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 const $ = s => document.querySelector(s);
 
@@ -1045,31 +1096,77 @@ function vistaDinero(){
       :`<tr><td colspan="4" class="vacio">Sin ingresos en ${anioSel}.</td></tr>`)
     + `</tbody></table>`;
 
-  const ult=D.gastos.filter(g=>aFecha(g.fecha).getFullYear()===anioSel)
-                    .sort((a,b)=>a.fecha<b.fecha?1:-1);
-  h+=`<div class="cab" style="margin-top:30px"><h2>Gastos</h2>
-    <span class="nota">${ult.length} movimientos · toca uno para corregirlo</span></div>
-    <div class="anio"><input class="buscar" id="q-gas" placeholder="Buscar por concepto…" autocomplete="off"></div>
-  <table class="tabla"><thead><tr><th>Concepto</th><th>Categoría</th><th>Fecha</th>
-    <th style="text-align:right">Importe</th></tr></thead><tbody id="tb-gas">`
-    + (ult.length?ult.map(g=>`<tr data-g="${g.id}" data-q="${esc((g.concepto||'').toLowerCase())}" style="cursor:pointer">
-        <td>${esc(g.concepto)}</td><td><span class="pill">${g.categoria||'otro'}</span></td>
-        <td class="num">${fCorta(aFecha(g.fecha))}</td>
-        <td class="num">${eur(g.importe)} €</td></tr>`).join('')
-      :`<tr><td colspan="4" class="vacio">Sin gastos en ${anioSel}.</td></tr>`)
-    + `</tbody></table>`;
+  /* ── gastos, separados en fijos y variables y agrupados por mes ─────
+     Fijo es lo que se repite todos los meses; variable, lo que cambia.
+     Agrupar por mes es lo que permite comparar y detectar el mes raro. */
+  const gAnio = D.gastos.filter(g=>aFecha(g.fecha).getFullYear()===anioSel);
 
-  /* Gastos fijos: plantillas que se repiten cada mes. */
-  h+=`<div class="cab" style="margin-top:30px"><h2>Gastos fijos</h2>
-    <span class="nota">se generan cada mes con un botón</span></div>
-    <div class="anio"><button class="btn mini" data-acc="fijo">+ Fijo</button></div>
-  <table class="tabla"><thead><tr><th>Concepto</th><th>Día</th>
-    <th style="text-align:right">Importe al mes</th></tr></thead><tbody>`
-    + (D.fijos.length?D.fijos.map(f=>`<tr data-f="${f.id}" style="cursor:pointer">
-        <td>${esc(f.concepto)}</td><td class="num">${f.dia||1}</td>
-        <td class="num">${eur(f.importe)} €</td></tr>`).join('')
-      :`<tr><td colspan="3" class="vacio">Sin gastos fijos. Añade el alquiler, la luz, la alarma…</td></tr>`)
-    + `</tbody></table>`;
+  function bloqueGastos(lista, titulo, id, acciones){
+    const total = lista.reduce((a,g)=>a+(g.importe||0),0);
+    const meses = {};
+    lista.forEach(g=>{ const m=aFecha(g.fecha).getMonth(); (meses[m]=meses[m]||[]).push(g); });
+    const orden = Object.keys(meses).map(Number).sort((a,b)=>b-a);
+
+    let x = `<div class="cab" style="margin-top:30px"><h2>${titulo}</h2>
+      <span class="nota">${lista.length} movimientos · ${eur(total)} € en ${anioSel}</span></div>
+      <div class="anio">${acciones}</div>`;
+
+    if(!orden.length){
+      x += `<div class="vacio" style="border:1px solid var(--linea)">Sin gastos ${
+        id==='fij'?'fijos':'variables'} en ${anioSel}.</div>`;
+      return x;
+    }
+
+    x += `<div id="tb-${id}">`;
+    orden.forEach((m,i)=>{
+      const gs = meses[m].sort((a,b)=>a.fecha<b.fecha?1:-1);
+      const sub = gs.reduce((a,g)=>a+(g.importe||0),0);
+      const clave = id+'-'+m;
+      const abierto = mesesAbiertos.has(clave) || (i===0 && !mesesTocados.has(id));
+      x += `<section class="grupo${abierto?' abierto':''}">
+        <button class="grupo-cab" data-mes-toggle="${clave}">
+          <i>${abierto?'−':'+'}</i>
+          <b>${MESES[m]}</b>
+          <span>${gs.length} gasto${gs.length>1?'s':''}</span>
+          <em>${eur(sub)} €</em>
+        </button>`;
+      if(abierto){
+        x += `<table class="tabla"><tbody>`
+          + gs.map(g=>`<tr data-g="${g.id}" data-q="${esc((g.concepto||'').toLowerCase())}" style="cursor:pointer">
+              <td>${esc(g.concepto)}</td>
+              <td><span class="pill">${g.categoria||'otro'}</span>${
+                g.conFactura===false?' <span class="pill sinf">sin factura</span>':''}</td>
+              <td class="num" style="color:var(--dim)">${fCorta(aFecha(g.fecha))}</td>
+              <td class="num">${eur(g.importe)} €</td></tr>`).join('')
+          + `</tbody></table>`;
+      }
+      x += `</section>`;
+    });
+    x += `</div>`;
+    return x;
+  }
+
+  h += bloqueGastos(
+    gAnio.filter(esGastoFijo), 'Gastos fijos', 'fij',
+    `<button class="btn mini" data-acc="fijo">+ Plantilla</button>
+     <button class="btn mini" data-acc="generar">Generar los de este mes</button>
+     <span class="nota" style="font-family:var(--mono);font-size:11px;color:var(--dim)">
+       ${D.fijos.length} plantilla${D.fijos.length===1?'':'s'} guardada${D.fijos.length===1?'':'s'}</span>`);
+
+  if(D.fijos.length){
+    h += `<table class="tabla" style="margin-top:10px"><thead><tr>
+        <th>Plantilla</th><th>Día</th><th style="text-align:right">Importe al mes</th></tr></thead><tbody>`
+      + D.fijos.map(f=>`<tr data-f="${f.id}" style="cursor:pointer">
+          <td>${esc(f.concepto)}</td><td class="num">${f.dia||1}</td>
+          <td class="num">${eur(f.importe)} €</td></tr>`).join('')
+      + `</tbody></table>`;
+  }
+
+  h += bloqueGastos(
+    gAnio.filter(g=>!esGastoFijo(g)), 'Gastos variables', 'var',
+    `<button class="btn mini" data-acc="gasto">+ Gasto</button>
+     <input class="buscar" id="q-gas" placeholder="Buscar por concepto…" autocomplete="off">`);
+
   return h;
 }
 
@@ -1674,6 +1771,11 @@ function abrirGasto(id){
           .map(([k,v])=>`<option value="${k}"${k===g.categoria?' selected':''}>${v}</option>`).join('')}</select></div>
       <div class="campo"><label for="g-via">Pagado con</label>
         <select id="g-via">${VIAS.map(v=>`<option${v===via(g.via)?' selected':''}>${v}</option>`).join('')}</select></div></div>
+    <div class="campo"><label for="g-tipo">¿Se repite todos los meses?</label>
+      <select id="g-tipo">
+        <option value="0"${!esGastoFijo(g)?' selected':''}>No · gasto variable</option>
+        <option value="1"${esGastoFijo(g)?' selected':''}>Sí · gasto fijo</option>
+      </select></div>
     <div class="campo"><label for="g-fact">¿Tienes factura?</label>
       <select id="g-fact">
         <option value="1"${g.conFactura!==false?' selected':''}>Sí, el IVA se puede desgravar</option>
@@ -1689,7 +1791,7 @@ function abrirGasto(id){
   $('#g-ok').addEventListener('click',()=>{
     const d={fecha:$('#g-fecha').value||aIso(hoy), concepto:$('#g-con').value.trim()||'Sin concepto',
       importe:+$('#g-imp').value||0, via:$('#g-via').value, categoria:$('#g-cat').value,
-      conFactura:$('#g-fact').value==='1'};
+      conFactura:$('#g-fact').value==='1', fijo:$('#g-tipo').value==='1'};
     if(editG) Object.assign(editG,d); else D.gastos.push(Object.assign({id:nid()},d));
     cerrar(); guardar(); pintar();
   });
@@ -1793,6 +1895,33 @@ function abrirFijo(id){
   });
 }
 
+/* Vaciar movimientos. Va en Ajustes y pide escribir una palabra: es
+   irreversible y no debe poder dispararse por un toque accidental. */
+async function vaciarMovimientos(){
+  const n = D.cobros.length + D.gastos.length;
+  if(!n){ alert('No hay ingresos ni gastos que borrar.'); return; }
+  const p = prompt(`Se van a borrar ${D.cobros.length} ingresos y ${D.gastos.length} gastos.\n`+
+    `Los trabajos, clientes y ajustes NO se tocan.\n\n`+
+    `Esto no se puede deshacer. Escribe BORRAR para confirmar:`);
+  if(p !== 'BORRAR') return;
+
+  const antes = $('#cuerpo');
+  if(antes) antes.innerHTML = '<div class="cargando">Borrando…</div>';
+  try{
+    for(const col of ['cobros','gastos']){
+      const ids = (D[col]||[]).map(x=>x.id).filter(Boolean);
+      for(const id of ids) await borrarDoc(col, id);
+      D[col] = [];
+      [...sincronizado.keys()].forEach(k=>{ if(k.startsWith(col+'/')) sincronizado.delete(k); });
+    }
+    pintar();
+    alert(`Borrados ${n} movimientos. Ya puedes volver a importar.`);
+  }catch(e){
+    console.warn(e);
+    alert('Se ha cortado el borrado: '+(e.code||e.message));
+  }
+}
+
 /* ─── ajustes: plazas y servicios ──────────────────────────────────── */
 function vistaAjustes(){
   let h=`<div class="cab"><h2>Plazas del taller</h2>
@@ -1806,7 +1935,15 @@ function vistaAjustes(){
     <div class="aviso"><b>Deja siempre una plaza sin reservar.</b> Es la que absorbe
     los retrabajos, el cliente que aparece sin cita y el coche que tarda en recogerse.</div>`;
 
-  h+=`<div class="cab" style="margin-top:30px"><h2>Impuestos</h2>
+  h+=`<div class="cab" style="margin-top:34px"><h2>Datos</h2></div>
+  <div class="aviso" style="border-left-color:var(--alerta);background:var(--alerta-suave);color:#6B2318">
+    <b>Vaciar ingresos y gastos.</b> Borra todos los movimientos de dinero para
+    poder volver a cargarlos desde cero. Los trabajos, los clientes y esta
+    configuración no se tocan.
+    <div style="margin-top:10px"><button class="btn mini borrar" data-acc="vaciar">Vaciar movimientos</button></div>
+  </div>
+
+  <div class="cab" style="margin-top:30px"><h2>Impuestos</h2>
     <span class="nota">los fija tu gestoría</span></div>
   <table class="tabla"><tbody>
     <tr data-fis="iva" style="cursor:pointer"><td>IVA que se repercute</td>
@@ -1890,7 +2027,8 @@ function generarFijos(){
   const ya=new Set(D.gastos.filter(g=>String(g.fecha).startsWith(marca)&&g.origenFijo).map(g=>g.origenFijo));
   const falta=D.fijos.filter(f=>!ya.has(f.id));
   falta.forEach(f=>D.gastos.push({id:nid(),fecha:`${marca}-${p2(Math.min(28,f.dia||1))}`,
-    concepto:f.concepto,importe:f.importe,via:f.via||'Banco',categoria:f.categoria||'fijo',origenFijo:f.id}));
+    concepto:f.concepto,importe:f.importe,via:f.via||'Banco',categoria:f.categoria||'fijo',
+    fijo:true, origenFijo:f.id}));
   guardar(); pintar();
   alert(falta.length?`Se han añadido ${falta.length} gastos fijos de este mes.`
                     :'Los fijos de este mes ya estaban puestos.');
@@ -1974,6 +2112,8 @@ function pintar(){
     else if(a==='cliente') abrirCliente(null);
     else if(a==='ingreso') abrirIngreso(null);
     else if(a==='fijo') abrirFijo(null);
+    else if(a==='generar') generarFijos();
+    else if(a==='vaciar') vaciarMovimientos();
     else if(a==='plaza') abrirPlaza(null);
     else if(a==='servicio') abrirServicio(null);
     else generarFijos();
@@ -1982,6 +2122,12 @@ function pintar(){
     abrirCliente(r.dataset.c||null, r.dataset.nom)));
   c.querySelectorAll('tr[data-i]').forEach(r=>r.addEventListener('click',()=>abrirIngreso(r.dataset.i)));
   c.querySelectorAll('tr[data-f]').forEach(r=>r.addEventListener('click',()=>abrirFijo(r.dataset.f)));
+  c.querySelectorAll('[data-mes-toggle]').forEach(b=>b.addEventListener('click',()=>{
+    const k=b.dataset.mesToggle;
+    mesesTocados.add(k.split('-')[0]);
+    if(mesesAbiertos.has(k)) mesesAbiertos.delete(k); else mesesAbiertos.add(k);
+    pintar();
+  }));
   c.querySelectorAll('tr[data-p]').forEach(r=>r.addEventListener('click',()=>abrirPlaza(r.dataset.p)));
   c.querySelectorAll('tr[data-s]').forEach(r=>r.addEventListener('click',()=>abrirServicio(r.dataset.s)));
   c.querySelectorAll('tr[data-fis]').forEach(r=>r.addEventListener('click',()=>{
@@ -1993,7 +2139,7 @@ function pintar(){
     D.fiscal={...fiscal(), [k]:n}; guardar(); pintar();
   }));
   /* buscadores de las tablas largas */
-  [['q-ing','tb-ing'],['q-gas','tb-gas']].forEach(([q,tb])=>{
+  [['q-ing','tb-ing'],['q-gas','tb-var']].forEach(([q,tb])=>{
     const inp=c.querySelector('#'+q), cuerpo=c.querySelector('#'+tb);
     if(!inp||!cuerpo) return;
     inp.addEventListener('input',()=>{
@@ -2091,7 +2237,9 @@ auth.onAuthStateChanged(async user=>{
   $acc.hidden=true; $app.hidden=false;
   document.getElementById('cuerpo').innerHTML = '<div class="cargando">Cargando datos…</div>';
   try{ await sembrarSiHaceFalta(); }catch(e){ console.warn('siembra', e); }
-  try{ const f = await DOC_FISCAL().get(); if(f.exists) D.fiscal = f.data(); }catch(e){}
+  try{ const f = await DOC_FISCAL().get();
+        if(f.exists){ D.fiscal = f.data(); sincronizado.set('config/fiscal', JSON.stringify(D.fiscal)); }
+      }catch(e){}
   escuchar(()=>{
     if(!D.plazas || !D.plazas.length)       D.plazas    = PLAZAS_INI.map(p=>({...p}));
     if(!D.servicios || !D.servicios.length) D.servicios = SERVICIOS_INI.map(x=>({...x,id:nid()})).sort(ordenServicios);
