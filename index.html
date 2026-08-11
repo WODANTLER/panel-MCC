@@ -356,6 +356,21 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
   font-size:12.5px;font-weight:600;color:var(--oro)}
 .plantillas .tabla td{padding:8px 14px}
 
+/* ── zona peligrosa ──────────────────────────────────────────────────── */
+.peligro{margin-top:50px;padding-top:20px;border-top:1px solid var(--linea)}
+.peligro-abrir{appearance:none;background:none;border:0;cursor:pointer;padding:4px 0;
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--dim);
+  transition:color .18s}
+.peligro-abrir:hover{color:var(--alerta)}
+.peligro-abrir:focus-visible{outline:2px solid var(--alerta);outline-offset:3px}
+.peligro-c{margin-top:12px;border:1px solid #E9C4BC;background:var(--alerta-suave);
+  padding:16px 18px;max-width:560px}
+.peligro-c>b{display:block;font-family:var(--display);
+  font-variation-settings:'wdth' 84,'wght' 700;font-size:14px;
+  color:var(--alerta);margin-bottom:8px}
+.peligro-c p{margin:0 0 10px;font-size:13.5px;line-height:1.55;color:#6B2318}
+.peligro-c .peligro-tip{font-size:12.5px;color:#8B5A4A}
+
 /* ── selector de año ─────────────────────────────────────────────────── */
 .selanio{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:20px;
   padding-bottom:12px;border-bottom:1px solid var(--linea)}
@@ -1053,6 +1068,7 @@ let plantillasAbiertas=false;    // lista de gastos fijos recurrentes
 let mesRueda=null;               // mes que muestra la rueda de la derecha
 let listaSel='ing';              // pestaña de movimientos visible
 let triRueda=null;               // trimestre de la rueda izquierda (null = año)
+let peligroAbierto=false;        // zona de borrado, cerrada por defecto
 let mesRef=new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 const $ = s => document.querySelector(s);
 
@@ -1473,34 +1489,33 @@ function vistaImpuestos(){
       <div class="n">${eur(aHacienda)}<small>€</small></div>
       <div class="sub">en ${anioSel}</div></div></div>`;
 
+  /* Agenda de pagos, no un resumen del negocio: eso ya lo cuentan las
+     ruedas de Wallet. Aquí solo va qué se paga, cuánto y hasta cuándo. */
   h+=`<div class="cab"><h2>Trimestre a trimestre</h2>
-    <span class="nota">toca un trimestre para ver el detalle</span></div>
+    <span class="nota">toca un trimestre para ver de dónde sale</span></div>
   <table class="tabla"><thead><tr>
     <th>Trimestre</th>
-    <th style="text-align:right">Facturado</th>
-    <th style="text-align:right">Efectivo</th>
-    <th style="text-align:right">Gasto deducible</th>
     <th style="text-align:right">IVA</th>
     <th style="text-align:right">IRPF ${fiscal().irpf} %</th>
-    <th style="text-align:right">Queda limpio</th>
+    <th style="text-align:right">A pagar</th>
+    <th style="text-align:right">Antes del</th>
   </tr></thead><tbody>`;
 
   visibles.forEach(x=>{
+    const aPagar = Math.max(0,x.ivaPagar) + x.irpf;
     const vacio = !(x.baseFact||x.efectivo||x.gastos);
     h+=`<tr data-tri="${x.n}" style="cursor:pointer${vacio?';opacity:.5':''}">
       <td><b>T${x.n}</b> <span style="color:var(--dim);font-size:11.5px">${
         ['ene–mar','abr–jun','jul–sep','oct–dic'][x.n-1]}</span>
         ${x.n===triActual?' <span class="pill">en curso</span>':''}</td>
-      <td class="num">${eur(x.baseFact)} €</td>
-      <td class="num" style="color:var(--dim)">${eur(x.efectivo)} €</td>
-      <td class="num" style="color:var(--dim)">${eur(x.baseGasto)} €${
-        x.sinFactura?`<br><span style="color:var(--alerta);font-size:11px">+${eur(x.sinFactura)} sin factura</span>`:''}</td>
-      <td class="num ${x.ivaPagar>0?'neg':'pos'}">${eur(x.ivaPagar)} €</td>
+      <td class="num ${x.ivaPagar>0?'neg':'pos'}">${
+        x.ivaPagar<0 ? `${eur(Math.abs(x.ivaPagar))} € a tu favor` : `${eur(x.ivaPagar)} €`}</td>
       <td class="num ${x.irpf>0?'neg':''}">${eur(x.irpf)} €</td>
-      <td class="num ${x.neto<0?'neg':'pos'}"><b>${eur(x.neto)} €</b></td></tr>`;
+      <td class="num"><b>${eur(aPagar)} €</b></td>
+      <td class="num" style="color:var(--dim)">${LIMITE[x.n-1]}</td></tr>`;
 
     if(triAbierto===x.n){
-      h+=`<tr class="detalle"><td colspan="7">
+      h+=`<tr class="detalle"><td colspan="5">
         <div class="det">
           <div class="det-b">
             <b>IVA</b>
@@ -1523,6 +1538,7 @@ function vistaImpuestos(){
           <div class="det-b">
             <b>Efectivo</b>
             <div class="lin"><span>Cobrado sin factura</span><b>${eur(x.efectivo)} €</b></div>
+            ${x.sinFactura?`<div class="lin"><span>Gasto sin factura</span><b>${eur(x.sinFactura)} €</b></div>`:''}
             <div class="lin res"><span>Impuestos que genera</span><b>0 €</b></div>
             <p>Queda fuera del IVA y del IRPF. Entra en caja pero no aparece
                en ninguna liquidación.</p>
@@ -1530,22 +1546,11 @@ function vistaImpuestos(){
         </div></td></tr>`;
     }
   });
-
-  if(conMov.length>1){
-    h+=`<tr style="border-top:2px solid var(--linea2)">
-      <td><b>Año ${anioSel}</b></td>
-      <td class="num"><b>${eur(anual.baseFact)} €</b></td>
-      <td class="num" style="color:var(--dim)"><b>${eur(anual.efectivo)} €</b></td>
-      <td class="num" style="color:var(--dim)"><b>${eur(anual.baseGasto)} €</b></td>
-      <td class="num neg"><b>${eur(anual.ivaPagar)} €</b></td>
-      <td class="num neg"><b>${eur(anual.irpf)} €</b></td>
-      <td class="num ${anual.neto<0?'neg':'pos'}"><b>${eur(anual.neto)} €</b></td></tr>`;
-  }
   h+=`</tbody></table>`;
 
-  h+=`<div class="aviso"><b>«Queda limpio» es lo que sobra de verdad:</b>
-    todo lo cobrado, menos los gastos, menos el IVA y menos el IRPF.
-    Lo cobrado en efectivo suma a la caja pero no genera impuestos.</div>`;
+  h+=`<div class="aviso"><b>Aquí solo está lo que hay que pagar y cuándo.</b>
+    Cuánto entra, cuánto se va en gastos y cuánto queda limpio lo tienes
+    graficado en Wallet, con el mismo selector de trimestre.</div>`;
 
   return h;
 }
@@ -2446,15 +2451,7 @@ function vistaAjustes(){
     <div class="aviso"><b>Deja siempre una plaza sin reservar.</b> Es la que absorbe
     los retrabajos, el cliente que aparece sin cita y el coche que tarda en recogerse.</div>`;
 
-  h+=`<div class="cab" style="margin-top:34px"><h2>Datos</h2></div>
-  <div class="aviso" style="border-left-color:var(--alerta);background:var(--alerta-suave);color:#6B2318">
-    <b>Vaciar ingresos y gastos.</b> Borra todos los movimientos de dinero para
-    poder volver a cargarlos desde cero. Los trabajos, los clientes y esta
-    configuración no se tocan.
-    <div style="margin-top:10px"><button class="btn mini borrar" data-acc="vaciar">Vaciar movimientos</button></div>
-  </div>
-
-  <div class="cab" style="margin-top:30px"><h2>Impuestos</h2>
+  h+=`<div class="cab" style="margin-top:30px"><h2>Impuestos</h2>
     <span class="nota">los fija tu gestoría</span></div>
   <table class="tabla"><tbody>
     <tr data-fis="iva" style="cursor:pointer"><td>IVA que se repercute</td>
@@ -2472,6 +2469,25 @@ function vistaAjustes(){
         <td>${esc(x.n)}</td><td class="num">${x.d}</td>
         <td class="num">${x.p?eur(x.p)+' €':'a presupuestar'}</td></tr>`).join('')
     + `</tbody></table>`;
+
+  /* Zona peligrosa, al final y escondida: hay que abrirla a propósito y
+     después confirmar. Dos puertas para algo que no tiene vuelta atrás. */
+  h+=`<section class="peligro">
+    <button class="peligro-abrir" data-acc="verpeligro">${
+      peligroAbierto?'− Ocultar':'+ Borrar datos'}</button>
+    ${peligroAbierto?`
+      <div class="peligro-c">
+        <b>¿Seguro que quieres eliminar todos los movimientos?</b>
+        <p>Se borran los <b>${D.cobros.length} ingresos</b> y los
+           <b>${D.gastos.length} gastos</b> de todos los años.
+           Los trabajos, los clientes y la configuración no se tocan.
+           <b>Esto no se puede deshacer.</b></p>
+        <p class="peligro-tip">Antes de seguir, baja una copia con el botón
+           «Exportar» de la cabecera.</p>
+        <button class="btn borrar" data-acc="vaciar">Sí, eliminar todos los movimientos</button>
+      </div>`:''}
+  </section>`;
+
   return h;
 }
 
@@ -2624,6 +2640,7 @@ function pintar(){
     else if(a==='ingreso') abrirIngreso(null);
     else if(a==='fijo') abrirFijo(null);
     else if(a==='verplantillas'){ plantillasAbiertas=!plantillasAbiertas; pintar(); }
+    else if(a==='verpeligro'){ peligroAbierto=!peligroAbierto; pintar(); }
     else if(a==='plegarreg'){
       const ks=[...new Set(D.trabajos.map(t=>{
         const d=aFecha(t.entra); return 'reg-'+d.getFullYear()+'-'+p2(d.getMonth()+1);}))];
