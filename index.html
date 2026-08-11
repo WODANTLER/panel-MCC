@@ -1038,6 +1038,13 @@ function vistaDinero(){
     baseGasto:a.baseGasto+x.baseGasto,
     ivaPagar:a.ivaPagar+Math.max(0,x.ivaPagar), irpf:a.irpf+x.irpf, neto:a.neto+x.neto}),
     {baseFact:0,efectivo:0,baseGasto:0,ivaPagar:0,irpf:0,neto:0});
+  /* Solo se pintan los trimestres con movimiento, más el que corre si es
+     del año que se está mirando. Cuatro filas a cero no dicen nada y hacen
+     que un único dato parezca un error. */
+  const triActual = anioSel===hoy.getFullYear() ? TRIMESTRE(aIso(hoy)) : null;
+  const triVisibles = tri.filter(x =>
+    x.baseFact || x.efectivo || x.gastos || x.n===triActual);
+
   h+=`<div class="cab" style="margin-top:30px"><h2>Impuestos por trimestre</h2>
     <span class="nota">IVA ${fiscal().iva} % · IRPF ${fiscal().irpf} % · se cambian en Ajustes</span></div>
   <table class="tabla"><thead><tr><th>Trimestre</th>
@@ -1045,7 +1052,7 @@ function vistaDinero(){
     <th style="text-align:right">Gasto deducible</th>
     <th style="text-align:right">IVA a pagar</th><th style="text-align:right">IRPF ${fiscal().irpf} %</th>
     <th style="text-align:right">Queda limpio</th></tr></thead><tbody>`
-    + tri.map(x=>`<tr${x.baseFact||x.efectivo||x.gastos?'':' style="opacity:.45"'}>
+    + triVisibles.map(x=>`<tr${x.n===triActual&&!(x.baseFact||x.efectivo||x.gastos)?' style="opacity:.5"':''}>
         <td><b>T${x.n}</b> <span style="color:var(--dim);font-size:11.5px">${
           ['ene–mar','abr–jun','jul–sep','oct–dic'][x.n-1]}</span></td>
         <td class="num">${eur(x.baseFact)} €</td>
@@ -1055,13 +1062,13 @@ function vistaDinero(){
         <td class="num ${x.ivaPagar>0?'neg':'pos'}">${eur(x.ivaPagar)} €</td>
         <td class="num ${x.irpf>0?'neg':''}">${eur(x.irpf)} €</td>
         <td class="num ${x.neto<0?'neg':'pos'}"><b>${eur(x.neto)} €</b></td></tr>`).join('')
-    + `<tr style="border-top:2px solid var(--linea2)">
+    + (triVisibles.length>1 ? `<tr style="border-top:2px solid var(--linea2)">
         <td><b>Año</b></td><td class="num"><b>${eur(anual.baseFact)} €</b></td>
         <td class="num" style="color:var(--dim)"><b>${eur(anual.efectivo)} €</b></td>
         <td class="num" style="color:var(--dim)"><b>${eur(anual.baseGasto)} €</b></td>
         <td class="num neg"><b>${eur(anual.ivaPagar)} €</b></td>
         <td class="num neg"><b>${eur(anual.irpf)} €</b></td>
-        <td class="num ${anual.neto<0?'neg':'pos'}"><b>${eur(anual.neto)} €</b></td></tr>`
+        <td class="num ${anual.neto<0?'neg':'pos'}"><b>${eur(anual.neto)} €</b></td></tr>` : '')
     + `</tbody></table>
   <div class="aviso"><b>El IVA que cobras no es tuyo.</b> De cada cobro con factura,
     ${fiscal().iva} de cada 121 € son de Hacienda y hay que apartarlos.
