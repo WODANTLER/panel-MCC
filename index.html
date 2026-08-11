@@ -694,13 +694,17 @@ const tipoDe = g => TIPOS_GASTO[g.tipo] ||
    importe suponiendo que el IVA va dentro (los antiguos). */
 function desgloseGasto(g){
   const t = tipoDe(g);
+  /* Se anota lo que sale de la cuenta y de ahí se despeja la base.
+     En una compra normal eso es base + IVA, así que basta dividir.
+     En el alquiler es base + IVA − retención, porque parte no se le paga
+     al proveedor: se ingresa a Hacienda. Por eso el divisor lleva las dos. */
   const base = g.base != null ? g.base
-             : (g.importe||0)/(1 + t.iva/100);
+             : (g.importe||0)/(1 + t.iva/100 - t.ret/100);
   const iva  = base * t.iva/100;
   const ret  = base * t.ret/100;
   return {
     t, base, iva, ret,
-    alProveedor : base + iva - ret,        // lo que sale hacia el proveedor
+    alProveedor : base + iva - ret,        // lo que sale de la cuenta
     deducible   : t.deduce ? base : 0,     // lo que resta beneficio
     ivaSoportado: t.deduce ? iva  : 0      // lo que se recupera de IVA
   };
@@ -2339,9 +2343,9 @@ function abrirGasto(id){
     <div class="campo"><label for="g-con">Concepto</label>
       <input id="g-con" value="${esc(g.concepto)}" placeholder="Bobinas PPF" autocomplete="off"></div>
     <div class="fila2">
-      <div class="campo"><label for="g-imp">Base sin IVA (€)</label>
+      <div class="campo"><label for="g-imp">Lo que pagas (€)</label>
         <input type="number" id="g-imp" min="0" step="0.01" inputmode="decimal"
-          value="${g.base!=null ? g.base : (g.importe!=null ? Math.round(desgloseGasto(g).base*100)/100 : '')}"></div>
+          value="${g.importe!=null ? g.importe : ''}"></div>
       <div class="campo"><label for="g-fecha">Fecha</label>
         <input type="date" id="g-fecha" value="${g.fecha}"></div></div>
     <div class="campo"><label for="g-tipofis">Qué tipo de gasto es</label>
@@ -2370,16 +2374,17 @@ function abrirGasto(id){
   /* Desglose en vivo. En el alquiler la diferencia entre lo que se le paga
      al casero y lo que cuesta de verdad son cientos de euros al mes. */
   function desgloseG(){
-    const base=numero($('#g-imp').value), k=$('#g-tipofis').value;
-    const t=TIPOS_GASTO[k], y=desgloseGasto({base, tipo:k});
+    const pagado=numero($('#g-imp').value), k=$('#g-tipofis').value;
+    const t=TIPOS_GASTO[k], y=desgloseGasto({importe:pagado, tipo:k});
+    const base=y.base;
     $('#g-desglose').innerHTML =
       `<span>Base <b>${eur(base)} €</b></span>`
       + (t.iva?`<span>IVA ${t.iva} % <b>${eur(y.iva)} €</b></span>`:'<span class="sinf">Sin IVA</span>')
       + (t.ret?`<span>Retención ${t.ret} % <b>−${eur(y.ret)} €</b></span>`:'')
-      + `<span class="tot">Al proveedor <b>${eur(y.alProveedor)} €</b></span>`
-      + (t.ret?`<p class="reten">Los ${eur(y.ret)} € de retención NO se los pagas al
-          proveedor: se los ingresas tú a Hacienda cada trimestre. No hace falta
-          anotarlos como otro gasto aparte.</p>`:'')
+      + `<span class="tot">Sale de la cuenta <b>${eur(y.alProveedor)} €</b></span>`
+      + (t.ret?`<p class="reten">De los ${eur(pagado)} €, al proveedor le llegan
+          ${eur(base+y.iva-y.ret)} € y los ${eur(y.ret)} € de retención los ingresas
+          tú a Hacienda cada trimestre. No los anotes como otro gasto aparte.</p>`:'')
       + (!t.deduce?`<p class="reten">No desgrava: ni resta beneficio ni devuelve IVA.</p>`:'');
   }
   ['#g-imp','#g-tipofis'].forEach(q=>{
@@ -2387,11 +2392,12 @@ function abrirGasto(id){
   desgloseG();
 
   $('#g-ok').addEventListener('click',()=>{
-    const base=numero($('#g-imp').value), k=$('#g-tipofis').value;
-    const y=desgloseGasto({base, tipo:k});
+    const pagado=numero($('#g-imp').value), k=$('#g-tipofis').value;
+    const y=desgloseGasto({importe:pagado, tipo:k});
     const d={fecha:$('#g-fecha').value||aIso(hoy), concepto:$('#g-con').value.trim()||'Sin concepto',
-      base, tipo:k,
-      importe:Math.round(y.alProveedor*100)/100,   // lo que sale hacia el proveedor
+      importe:pagado,                              // lo que sale de la cuenta
+      base:Math.round(y.base*100)/100,             // derivada, para no recalcular
+      tipo:k,
       via:$('#g-via').value, categoria:$('#g-cat').value,
       conFactura:TIPOS_GASTO[k].deduce, fijo:$('#g-tipo').value==='1'};
     if(editG) Object.assign(editG,d); else D.gastos.push(Object.assign({id:nid()},d));
