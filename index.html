@@ -468,7 +468,10 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .desglose b{color:var(--tinta);font-weight:600}
 .desglose .tot{margin-left:auto}
 .desglose .tot b{color:var(--oro)}
+.desglose{flex-wrap:wrap}
 .desglose .sinf{color:var(--alerta)}
+.desglose .reten{width:100%;margin:6px 0 0;font-family:var(--sans);font-size:12px;
+  line-height:1.5;color:#6B5B36}
 .desglose{flex-wrap:wrap}
 .desglose .reten{width:100%;margin:6px 0 0;font-family:var(--sans);font-size:12px;
   line-height:1.45;color:#6B5B36}
@@ -671,6 +674,38 @@ const CATEGORIAS = {material:'Material (PPF, vinilos, químicos)',
 const VIAS = ['Efectivo','Transferencia','Débito','Crédito','Banco'];   // gastos
 /* Para cobrar solo hay tres. 'banco' es una salida, no una entrada.
    El efectivo no genera IVA ni IRPF; los otros dos sí. */
+/* Cada gasto se comporta distinto ante Hacienda. Tratarlos todos como
+   "21 % incluido" descuadra el IVA deducible y el beneficio. */
+const TIPOS_GASTO = {
+  compra:      {n:'Compra o material (IVA 21 %)',        iva:21, ret:0,  deduce:true},
+  reducido:    {n:'IVA reducido (10 %)',                 iva:10, ret:0,  deduce:true},
+  alquiler:    {n:'Alquiler del local',                  iva:21, ret:19, deduce:true},
+  profesional: {n:'Profesional (gestoría, abogado)',     iva:21, ret:15, deduce:true},
+  exento:      {n:'Sin IVA (seguro, banco, tasas)',      iva:0,  ret:0,  deduce:true},
+  prestamo:    {n:'Devolución de préstamo',              iva:0,  ret:0,  deduce:false},
+  sinfactura:  {n:'Sin factura',                         iva:0,  ret:0,  deduce:false},
+};
+/* Compatibilidad: los gastos cargados antes no tienen tipo. Se les aplica
+   el criterio antiguo para que sus números no cambien solos. */
+const tipoDe = g => TIPOS_GASTO[g.tipo] ||
+  (g.conFactura===false ? TIPOS_GASTO.sinfactura : TIPOS_GASTO.compra);
+
+/* Desglose de un gasto. Si trae base, manda la base; si no, se deduce del
+   importe suponiendo que el IVA va dentro (los antiguos). */
+function desgloseGasto(g){
+  const t = tipoDe(g);
+  const base = g.base != null ? g.base
+             : (g.importe||0)/(1 + t.iva/100);
+  const iva  = base * t.iva/100;
+  const ret  = base * t.ret/100;
+  return {
+    t, base, iva, ret,
+    alProveedor : base + iva - ret,        // lo que sale hacia el proveedor
+    deducible   : t.deduce ? base : 0,     // lo que resta beneficio
+    ivaSoportado: t.deduce ? iva  : 0      // lo que se recupera de IVA
+  };
+}
+
 const VIAS_COBRO = ['Efectivo','Transferencia','Débito','Crédito'];
 /* Solo el efectivo queda fuera de IVA e IRPF. Se compara en minúsculas
    para que los cobros ya guardados como 'efectivo' sigan valiendo. */
@@ -696,32 +731,38 @@ const TRIMESTRE = f => Math.floor(aFecha(f).getMonth()/3)+1;
 
 /* Reparto del dinero en un periodo cualquiera. Sirve para el año y para
    un mes suelto: la cuenta es la misma, solo cambia el filtro. */
+/* Reparto del dinero de un periodo.
+   TODO se cuenta en bruto, tal como pasa por la caja: si cobra 1.210 €,
+   entraron 1.210 €. El IVA se descuenta UNA sola vez, cuando se liquida.
+   Contar los ingresos sin IVA y además restar el IVA lo descontaba dos
+   veces y hacía parecer que quedaba menos dinero del que hay. */
 function reparto(dentro){
-  let baseFact=0, ivaRep=0, efectivo=0, fijos=0, variables=0, baseGasto=0, ivaSop=0;
+  let entra=0, baseFact=0, ivaRep=0, efectivo=0;
+  let fijos=0, variables=0, baseGasto=0, ivaSop=0, retenciones=0;
 
   D.cobros.forEach(c=>{
     if(!dentro(aFecha(c.fecha))) return;
+    entra += c.importe||0;                       // lo que tocó la cuenta
     if(esFacturado(c)){ baseFact += baseDe(c); ivaRep += ivaDe(c); }
     else efectivo += c.importe||0;
   });
 
   D.gastos.forEach(g=>{
     if(!dentro(aFecha(g.fecha))) return;
-    const imp = g.importe||0;
-    if(esGastoFijo(g)) fijos += imp; else variables += imp;
-    if(g.conFactura!==false){
-      const base = imp/(1+fiscal().iva/100);
-      baseGasto += base; ivaSop += imp - base;
-    }
+    const y = desgloseGasto(g);
+    if(esGastoFijo(g)) fijos += y.alProveedor; else variables += y.alProveedor;
+    baseGasto   += y.deducible;
+    ivaSop      += y.ivaSoportado;
+    retenciones += y.ret;                        // se ingresan aparte
   });
 
-  const entra    = baseFact + efectivo;      // lo que entró de verdad
-  const ivaPagar = Math.max(0, ivaRep - ivaSop);
-  const irpf     = Math.max(0, (baseFact - baseGasto)) * fiscal().irpf/100;
-  const libre    = entra - fijos - variables - ivaPagar - irpf;
+  const ivaPagar = ivaRep - ivaSop;              // negativo = a su favor
+  const irpf     = Math.max(0, baseFact - baseGasto) * fiscal().irpf/100;
+  const libre    = entra - fijos - variables - Math.max(0,ivaPagar) - irpf - retenciones;
 
-  return {entra, baseFact, efectivo, fijos, variables, ivaPagar, irpf, libre,
-          salidas: fijos + variables + ivaPagar + irpf};
+  return {entra, baseFact, efectivo, fijos, variables,
+          ivaPagar, ivaRep, ivaSop, irpf, retenciones, libre,
+          salidas: fijos + variables + Math.max(0,ivaPagar) + irpf + retenciones};
 }
 
 /* Rueda en SVG. Sin librerías: son cinco arcos sobre un círculo. */
@@ -761,7 +802,7 @@ const via = v => VIA_BONITA[String(v||'').toLowerCase()] || v || '—';
 /** Cuentas del trimestre: lo que hay que declarar y lo que queda limpio. */
 function trimestres(anio){
   const t = [1,2,3,4].map(n=>({n, baseFact:0, ivaRep:0, efectivo:0,
-                               gastos:0, ivaSop:0, baseGasto:0, sinFactura:0}));
+                               gastos:0, ivaSop:0, baseGasto:0, sinFactura:0, retenido:0}));
   D.cobros.forEach(c=>{
     const d=aFecha(c.fecha); if(d.getFullYear()!==anio) return;
     const x=t[TRIMESTRE(c.fecha)-1];
@@ -771,20 +812,20 @@ function trimestres(anio){
   D.gastos.forEach(g=>{
     const d=aFecha(g.fecha); if(d.getFullYear()!==anio) return;
     const x=t[TRIMESTRE(g.fecha)-1];
-    x.gastos+=g.importe||0;                         // sale de la caja igual
-    /* Solo desgrava lo que tiene factura. Un gasto sin factura se paga y
-       punto: ni resta beneficio ni devuelve IVA. */
-    if(g.conFactura!==false){
-      const base=(g.importe||0)/(1+fiscal().iva/100);
-      x.baseGasto+=base;
-      x.ivaSop+=(g.importe||0)-base;
-    } else x.sinFactura=(x.sinFactura||0)+(g.importe||0);
+    const y=desgloseGasto(g);
+    x.gastos    += y.alProveedor;
+    x.baseGasto += y.deducible;
+    x.ivaSop    += y.ivaSoportado;
+    x.retenido  += y.ret;
+    if(!y.t.deduce) x.sinFactura += y.base;
   });
   t.forEach(x=>{
     x.ivaPagar = x.ivaRep - x.ivaSop;               // modelo 303
     x.beneficio = x.baseFact - x.baseGasto;         // beneficio declarable
     x.irpf = Math.max(0, x.beneficio) * fiscal().irpf/100;
-    x.neto = x.baseFact + x.efectivo - x.gastos - Math.max(0,x.ivaPagar) - x.irpf;
+    // Igual que en reparto(): en bruto y el IVA una sola vez.
+    x.neto = x.baseFact + x.ivaRep + x.efectivo
+           - x.gastos - Math.max(0,x.ivaPagar) - x.irpf - x.retenido;
   });
   return t;
 }
@@ -1207,7 +1248,11 @@ function vistaDinero(){
   const tI=f.reduce((a,x)=>a+x.ing,0), tG=f.reduce((a,x)=>a+x.gas,0);
   const tAnt=fAnt.reduce((a,x)=>a+x.ing,0);
   const varn=tAnt?Math.round(100*(tI-tAnt)/tAnt):null;
-  const fijoMes=conMov.length?f.reduce((a,x)=>a+(x.cat.fijo||0),0)/conMov.length:0;
+  /* Ojo: el coste fijo va por la marca fijo/variable, no por la categoría.
+     Los ads son categoría Marketing pero se pagan todos los meses. */
+  const gastosFijosAnio = D.gastos.filter(g=>aFecha(g.fecha).getFullYear()===anioSel && esGastoFijo(g));
+  const mesesConFijos = new Set(gastosFijosAnio.map(g=>aFecha(g.fecha).getMonth())).size || 1;
+  const fijoMes = gastosFijosAnio.reduce((a,g)=>a+(g.importe||0),0)/mesesConFijos;
   const tope=Math.max(1,...f.map(x=>Math.max(x.ing,x.gas)));
 
   let h=`<div class="selanio">
@@ -1222,7 +1267,7 @@ function vistaDinero(){
         :(varn>=0?'+':'')+varn+' % frente a '+(anioSel-1)}</div></div>
     <div class="kpi"><span class="et">Gastos</span>
       <div class="n">${eur(tG)}<small>€</small></div>
-      <div class="sub">salidas de caja y banco</div></div>
+      <div class="sub">gastos del negocio, sin impuestos</div></div>
     <div class="kpi"><span class="et">Diferencia</span>
       <div class="n"${tI-tG<0?' style="color:var(--alerta)"':''}>${eur(tI-tG)}<small>€</small></div>
       <div class="sub">antes de impuestos</div></div>
@@ -1255,15 +1300,17 @@ function vistaDinero(){
     variables: '#C9A24E',
     iva:       '#3C6D94',
     irpf:      '#5E8C61',
+    reten:     '#8B6B8F',
     libre:     '#14141A'
   };
   const partesDe = r => [
     {n:'Gastos fijos',     v:r.fijos,     c:COLORES.fijos},
     {n:'Gastos variables', v:r.variables, c:COLORES.variables},
-    {n:'IVA',              v:r.ivaPagar,  c:COLORES.iva},
+    {n:'IVA',              v:Math.max(0,r.ivaPagar), c:COLORES.iva},
     {n:'IRPF',             v:r.irpf,      c:COLORES.irpf},
+    {n:'Retenciones',      v:r.retenciones, c:COLORES.reten},
     {n:'Queda limpio',     v:r.libre,     c:COLORES.libre},
-  ];
+  ].filter(p=>p.n!=='Retenciones' || p.v>0);
   const leyenda = r => {
     const tot = r.entra || 1;
     return `<ul class="leyenda-r">` + partesDe(r).map(p=>`<li>
@@ -1389,8 +1436,14 @@ function vistaDinero(){
 
   const filaGasto = g=>`<tr data-g="${g.id}" data-q="${esc((g.concepto||'').toLowerCase())}" style="cursor:pointer">
       <td>${esc(g.concepto)}</td>
-      <td><span class="pill">${g.categoria||'otro'}</span>${
-        g.conFactura===false?' <span class="pill sinf">sin factura</span>':''}</td>
+      <td><span class="pill">${g.categoria||'otro'}</span>${(()=>{
+        const t=tipoDe(g);
+        if(g.tipo==='sinfactura') return ' <span class="pill sinf">sin factura</span>';
+        if(g.tipo==='prestamo')   return ' <span class="pill sinf">no desgrava</span>';
+        if(t.ret)                 return ` <span class="pill">retención ${t.ret} %</span>`;
+        if(!g.tipo && g.conFactura===false) return ' <span class="pill sinf">sin factura</span>';
+        return '';
+      })()}</td>
       <td class="num" style="color:var(--dim)">${fCorta(aFecha(g.fecha))}</td>
       <td class="num">${eur(g.importe)} €</td></tr>`;
 
@@ -1464,7 +1517,8 @@ function vistaImpuestos(){
     irpf:a.irpf+x.irpf, neto:a.neto+x.neto}),
     {baseFact:0,efectivo:0,baseGasto:0,ivaPagar:0,irpf:0,neto:0});
 
-  const aHacienda = anual.ivaPagar + anual.irpf;
+  const totalRet = tri.reduce((a,x)=>a+x.retenido,0);
+  const aHacienda = anual.ivaPagar + anual.irpf + totalRet;
   const trimAhora = triActual ? tri[triActual-1] : null;
   const LIMITE=['20 de abril','20 de julio','20 de octubre','30 de enero'];
 
@@ -1475,9 +1529,9 @@ function vistaImpuestos(){
     </div>`;
 
   h+=`<div class="kpis">
-    <div class="kpi ${trimAhora && (Math.max(0,trimAhora.ivaPagar)+trimAhora.irpf)>0?'riesgo':'destaca'}">
+    <div class="kpi ${trimAhora && (Math.max(0,trimAhora.ivaPagar)+trimAhora.irpf+trimAhora.retenido)>0?'riesgo':'destaca'}">
       <span class="et">Este trimestre</span>
-      <div class="n">${trimAhora?eur(Math.max(0,trimAhora.ivaPagar)+trimAhora.irpf):0}<small>€</small></div>
+      <div class="n">${trimAhora?eur(Math.max(0,trimAhora.ivaPagar)+trimAhora.irpf+trimAhora.retenido):0}<small>€</small></div>
       <div class="sub">${triActual?`T${triActual} · antes del ${LIMITE[triActual-1]}`:'—'}</div></div>
     <div class="kpi"><span class="et">IVA del año</span>
       <div class="n">${eur(anual.ivaPagar)}<small>€</small></div>
@@ -1497,12 +1551,13 @@ function vistaImpuestos(){
     <th>Trimestre</th>
     <th style="text-align:right">IVA</th>
     <th style="text-align:right">IRPF ${fiscal().irpf} %</th>
+    <th style="text-align:right">Retenciones</th>
     <th style="text-align:right">A pagar</th>
     <th style="text-align:right">Antes del</th>
   </tr></thead><tbody>`;
 
   visibles.forEach(x=>{
-    const aPagar = Math.max(0,x.ivaPagar) + x.irpf;
+    const aPagar = Math.max(0,x.ivaPagar) + x.irpf + x.retenido;
     const vacio = !(x.baseFact||x.efectivo||x.gastos);
     h+=`<tr data-tri="${x.n}" style="cursor:pointer${vacio?';opacity:.5':''}">
       <td><b>T${x.n}</b> <span style="color:var(--dim);font-size:11.5px">${
@@ -1511,11 +1566,12 @@ function vistaImpuestos(){
       <td class="num ${x.ivaPagar>0?'neg':'pos'}">${
         x.ivaPagar<0 ? `${eur(Math.abs(x.ivaPagar))} € a tu favor` : `${eur(x.ivaPagar)} €`}</td>
       <td class="num ${x.irpf>0?'neg':''}">${eur(x.irpf)} €</td>
+      <td class="num ${x.retenido>0?'neg':''}">${eur(x.retenido)} €</td>
       <td class="num"><b>${eur(aPagar)} €</b></td>
       <td class="num" style="color:var(--dim)">${LIMITE[x.n-1]}</td></tr>`;
 
     if(triAbierto===x.n){
-      h+=`<tr class="detalle"><td colspan="5">
+      h+=`<tr class="detalle"><td colspan="6">
         <div class="det">
           <div class="det-b">
             <b>IVA</b>
@@ -1535,6 +1591,13 @@ function vistaImpuestos(){
             <p>Hacienda no espera a fin de año: cada trimestre se adelanta
                una parte de lo ganado.</p>
           </div>
+          ${x.retenido>0?`<div class="det-b">
+            <b>Retenciones</b>
+            <div class="lin"><span>Retenido en alquiler y profesionales</span><b>${eur(x.retenido)} €</b></div>
+            <div class="lin res"><span>A ingresar</span><b>${eur(x.retenido)} €</b></div>
+            <p>No es un gasto tuyo: es dinero que no le pagaste al casero
+               y que le entregas a Hacienda en su nombre.</p>
+          </div>`:''}
           <div class="det-b">
             <b>Efectivo</b>
             <div class="lin"><span>Cobrado sin factura</span><b>${eur(x.efectivo)} €</b></div>
@@ -2276,21 +2339,21 @@ function abrirGasto(id){
     <div class="campo"><label for="g-con">Concepto</label>
       <input id="g-con" value="${esc(g.concepto)}" placeholder="Bobinas PPF" autocomplete="off"></div>
     <div class="fila2">
-      <div class="campo"><label for="g-imp">Importe (€)</label>
-        <input type="number" id="g-imp" min="0" step="0.01" value="${g.importe||''}" inputmode="decimal"></div>
+      <div class="campo"><label for="g-imp">Base sin IVA (€)</label>
+        <input type="number" id="g-imp" min="0" step="0.01" inputmode="decimal"
+          value="${g.base!=null ? g.base : (g.importe!=null ? Math.round(desgloseGasto(g).base*100)/100 : '')}"></div>
       <div class="campo"><label for="g-fecha">Fecha</label>
         <input type="date" id="g-fecha" value="${g.fecha}"></div></div>
+    <div class="campo"><label for="g-tipofis">Qué tipo de gasto es</label>
+      <select id="g-tipofis">${Object.entries(TIPOS_GASTO).map(([k,v])=>
+        `<option value="${k}"${k===(g.tipo||(g.conFactura===false?'sinfactura':'compra'))?' selected':''}>${v.n}</option>`).join('')}</select></div>
+    <div class="campo"><label>Desglose</label><div id="g-desglose" class="desglose"></div></div>
     <div class="fila2">
       <div class="campo"><label for="g-cat">Categoría</label>
         <select id="g-cat">${Object.entries(CATEGORIAS)
           .map(([k,v])=>`<option value="${k}"${k===g.categoria?' selected':''}>${v}</option>`).join('')}</select></div>
       <div class="campo"><label for="g-via">Pagado con</label>
         <select id="g-via">${VIAS.map(v=>`<option${v===via(g.via)?' selected':''}>${v}</option>`).join('')}</select></div></div>
-    <div class="campo"><label for="g-fact">¿Tienes factura?</label>
-      <select id="g-fact">
-        <option value="1"${g.conFactura!==false?' selected':''}>Sí, el IVA se puede desgravar</option>
-        <option value="0"${g.conFactura===false?' selected':''}>No</option>
-      </select></div>
     <div class="campo"><label for="g-tipo">¿Se repite todos los meses?</label>
       <select id="g-tipo">
         <option value="0"${!esGastoFijo(g)?' selected':''}>No · gasto variable</option>
@@ -2304,10 +2367,33 @@ function abrirGasto(id){
   $('#hoja').classList.add('on');
   $('#g-con').focus();
 
+  /* Desglose en vivo. En el alquiler la diferencia entre lo que se le paga
+     al casero y lo que cuesta de verdad son cientos de euros al mes. */
+  function desgloseG(){
+    const base=numero($('#g-imp').value), k=$('#g-tipofis').value;
+    const t=TIPOS_GASTO[k], y=desgloseGasto({base, tipo:k});
+    $('#g-desglose').innerHTML =
+      `<span>Base <b>${eur(base)} €</b></span>`
+      + (t.iva?`<span>IVA ${t.iva} % <b>${eur(y.iva)} €</b></span>`:'<span class="sinf">Sin IVA</span>')
+      + (t.ret?`<span>Retención ${t.ret} % <b>−${eur(y.ret)} €</b></span>`:'')
+      + `<span class="tot">Al proveedor <b>${eur(y.alProveedor)} €</b></span>`
+      + (t.ret?`<p class="reten">Los ${eur(y.ret)} € de retención NO se los pagas al
+          proveedor: se los ingresas tú a Hacienda cada trimestre. No hace falta
+          anotarlos como otro gasto aparte.</p>`:'')
+      + (!t.deduce?`<p class="reten">No desgrava: ni resta beneficio ni devuelve IVA.</p>`:'');
+  }
+  ['#g-imp','#g-tipofis'].forEach(q=>{
+    $(q).addEventListener('input',desgloseG); $(q).addEventListener('change',desgloseG); });
+  desgloseG();
+
   $('#g-ok').addEventListener('click',()=>{
+    const base=numero($('#g-imp').value), k=$('#g-tipofis').value;
+    const y=desgloseGasto({base, tipo:k});
     const d={fecha:$('#g-fecha').value||aIso(hoy), concepto:$('#g-con').value.trim()||'Sin concepto',
-      importe:numero($('#g-imp').value), via:$('#g-via').value, categoria:$('#g-cat').value,
-      conFactura:$('#g-fact').value==='1', fijo:$('#g-tipo').value==='1'};
+      base, tipo:k,
+      importe:Math.round(y.alProveedor*100)/100,   // lo que sale hacia el proveedor
+      via:$('#g-via').value, categoria:$('#g-cat').value,
+      conFactura:TIPOS_GASTO[k].deduce, fijo:$('#g-tipo').value==='1'};
     if(editG) Object.assign(editG,d); else D.gastos.push(Object.assign({id:nid()},d));
     cerrar(); guardar(); pintar();
   });
