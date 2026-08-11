@@ -1153,8 +1153,9 @@ function vistaDinero(){
     vacio:`Sin gastos fijos en ${anioSel}.`,
     acciones:`<button class="btn mini" data-acc="fijo">+ Plantilla</button>
      <button class="btn mini" data-acc="generar">Generar los de este mes</button>
-     ${D.fijos.length?`<button class="btn mini" data-acc="verplantillas">
-        ${plantillasAbiertas?'−':'+'} ${D.fijos.length} plantilla${D.fijos.length===1?'':'s'}</button>`:''}`});
+     ${D.fijos.length?`<button class="btn mini" data-acc="verplantillas">${
+        plantillasAbiertas ? 'Ocultar plantillas'
+                           : `Ver plantillas (${D.fijos.length})`}</button>`:''}`});
 
   if(D.fijos.length && plantillasAbiertas){
     const totalPl = D.fijos.reduce((a,f)=>a+(f.importe||0),0);
