@@ -321,6 +321,20 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .grupo.abierto .grupo-cab i,.grupo.abierto .grupo-cab em{color:var(--oro)}
 .grupo .tabla td{padding:9px 14px}
 .pill.sinf{color:var(--alerta);border-color:#E9C4BC;background:var(--alerta-suave)}
+
+/* ── detalle de un trimestre ─────────────────────────────────────────── */
+.detalle td{padding:0!important;background:var(--panel)}
+.det{display:grid;gap:1px;background:var(--linea);border-top:1px solid var(--linea2)}
+@media(min-width:760px){.det{grid-template-columns:repeat(3,1fr)}}
+.det-b{background:#fff;padding:14px 16px}
+.det-b>b{display:block;font-family:var(--display);
+  font-variation-settings:'wdth' 84,'wght' 700;font-size:12px;
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:9px}
+.det-b p{margin:10px 0 0;font-size:11.5px;line-height:1.5;color:var(--dim)}
+.lin{display:flex;align-items:baseline;gap:10px;padding:3px 0;font-size:13px;color:var(--dim)}
+.lin b{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--tinta);font-weight:500}
+.lin.res{border-top:1px solid var(--linea);margin-top:6px;padding-top:7px;color:var(--tinta)}
+.lin.res b{font-weight:600;font-size:14.5px;color:var(--oro)}
 .anio{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
 .buscar{flex:1;min-width:150px;background:#fff;border:1px solid var(--linea2);
   color:var(--tinta);font-family:var(--sans);font-size:14px;padding:7px 11px}
@@ -331,6 +345,9 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .desglose .tot{margin-left:auto}
 .desglose .tot b{color:var(--oro)}
 .desglose .sinf{color:var(--alerta)}
+.desglose{flex-wrap:wrap}
+.desglose .reten{width:100%;margin:6px 0 0;font-family:var(--sans);font-size:12px;
+  line-height:1.45;color:#6B5B36}
 
 /* ── acciones rápidas (tablet) ──────────────────────────────────────── */
 .acc-cab{margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--linea)}
@@ -444,6 +461,7 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
       <button class="tab" role="tab" aria-selected="false" data-v="dinero">Wallet</button>
       <button class="tab" role="tab" aria-selected="false" data-v="clientes">Clientes</button>
       <button class="tab" role="tab" aria-selected="false" data-v="registro">Registro</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="impuestos">Impuestos</button>
       <button class="tab" role="tab" aria-selected="false" data-v="ajustes">Ajustes</button>
     </nav>
   </div>
@@ -502,7 +520,8 @@ const PLAZAS_INI = [
   {id:2,nom:'Plaza 2',uso:'Trabajo largo',libre:false},
   {id:3,nom:'Plaza 3',uso:'PPF / vinilo',libre:false},
   {id:4,nom:'Plaza 4',uso:'Lavado / rápido',libre:false},
-  {id:5,nom:'Plaza 5',uso:'Imprevistos',libre:true}
+  {id:5,nom:'Plaza 5',uso:'Fuera o vecino',libre:false},
+  {id:6,nom:'Plaza 6',uso:'Imprevistos',libre:true}
 ];
 const plazas      = () => D.plazas || [];
 const esLibre     = id => !!(plazas().find(p=>p.id===+id)||{}).libre;
@@ -578,8 +597,8 @@ function trimestres(anio){
     const d=aFecha(g.fecha); if(d.getFullYear()!==anio) return;
     const x=t[TRIMESTRE(g.fecha)-1];
     x.gastos+=g.importe||0;                         // sale de la caja igual
-    /* Pero solo desgrava lo que tiene factura. Un gasto sin factura se paga
-       y punto: ni resta beneficio ni devuelve IVA. */
+    /* Solo desgrava lo que tiene factura. Un gasto sin factura se paga y
+       punto: ni resta beneficio ni devuelve IVA. */
     if(g.conFactura!==false){
       const base=(g.importe||0)/(1+fiscal().iva/100);
       x.baseGasto+=base;
@@ -857,6 +876,7 @@ function duraciones(){
 let vista='plazas', anioSel=null;
 const mesesAbiertos=new Set();   // meses desplegados en Wallet
 const mesesTocados=new Set();    // bloques donde el usuario ya eligió
+let triAbierto=null;             // trimestre con el detalle desplegado
 let mesRef=new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 const $ = s => document.querySelector(s);
 
@@ -1032,50 +1052,6 @@ function vistaDinero(){
   const cat={};
   f.forEach(x=>Object.entries(x.cat).forEach(([k,v])=>cat[k]=(cat[k]||0)+v));
   const cats=Object.entries(cat).sort((a,b)=>b[1]-a[1]);
-  /* Impuestos por trimestre */
-  const tri=trimestres(anioSel);
-  const anual=tri.reduce((a,x)=>({baseFact:a.baseFact+x.baseFact, efectivo:a.efectivo+x.efectivo,
-    baseGasto:a.baseGasto+x.baseGasto,
-    ivaPagar:a.ivaPagar+Math.max(0,x.ivaPagar), irpf:a.irpf+x.irpf, neto:a.neto+x.neto}),
-    {baseFact:0,efectivo:0,baseGasto:0,ivaPagar:0,irpf:0,neto:0});
-  /* Solo se pintan los trimestres con movimiento, más el que corre si es
-     del año que se está mirando. Cuatro filas a cero no dicen nada y hacen
-     que un único dato parezca un error. */
-  const triActual = anioSel===hoy.getFullYear() ? TRIMESTRE(aIso(hoy)) : null;
-  const triVisibles = tri.filter(x =>
-    x.baseFact || x.efectivo || x.gastos || x.n===triActual);
-
-  h+=`<div class="cab" style="margin-top:30px"><h2>Impuestos por trimestre</h2>
-    <span class="nota">IVA ${fiscal().iva} % · IRPF ${fiscal().irpf} % · se cambian en Ajustes</span></div>
-  <table class="tabla"><thead><tr><th>Trimestre</th>
-    <th style="text-align:right">Facturado</th><th style="text-align:right">Efectivo</th>
-    <th style="text-align:right">Gasto deducible</th>
-    <th style="text-align:right">IVA a pagar</th><th style="text-align:right">IRPF ${fiscal().irpf} %</th>
-    <th style="text-align:right">Queda limpio</th></tr></thead><tbody>`
-    + triVisibles.map(x=>`<tr${x.n===triActual&&!(x.baseFact||x.efectivo||x.gastos)?' style="opacity:.5"':''}>
-        <td><b>T${x.n}</b> <span style="color:var(--dim);font-size:11.5px">${
-          ['ene–mar','abr–jun','jul–sep','oct–dic'][x.n-1]}</span></td>
-        <td class="num">${eur(x.baseFact)} €</td>
-        <td class="num" style="color:var(--dim)">${eur(x.efectivo)} €</td>
-        <td class="num" style="color:var(--dim)">${eur(x.baseGasto)} €${
-          x.sinFactura?` <span style="color:var(--alerta)">+${eur(x.sinFactura)} sin factura</span>`:''}</td>
-        <td class="num ${x.ivaPagar>0?'neg':'pos'}">${eur(x.ivaPagar)} €</td>
-        <td class="num ${x.irpf>0?'neg':''}">${eur(x.irpf)} €</td>
-        <td class="num ${x.neto<0?'neg':'pos'}"><b>${eur(x.neto)} €</b></td></tr>`).join('')
-    + (triVisibles.length>1 ? `<tr style="border-top:2px solid var(--linea2)">
-        <td><b>Año</b></td><td class="num"><b>${eur(anual.baseFact)} €</b></td>
-        <td class="num" style="color:var(--dim)"><b>${eur(anual.efectivo)} €</b></td>
-        <td class="num" style="color:var(--dim)"><b>${eur(anual.baseGasto)} €</b></td>
-        <td class="num neg"><b>${eur(anual.ivaPagar)} €</b></td>
-        <td class="num neg"><b>${eur(anual.irpf)} €</b></td>
-        <td class="num ${anual.neto<0?'neg':'pos'}"><b>${eur(anual.neto)} €</b></td></tr>` : '')
-    + `</tbody></table>
-  <div class="aviso"><b>El IVA que cobras no es tuyo.</b> De cada cobro con factura,
-    ${fiscal().iva} de cada 121 € son de Hacienda y hay que apartarlos.
-    <b>Lo cobrado en efectivo queda fuera:</b> ni lleva IVA ni entra en el IRPF,
-    salvo que marques ese cobro como facturado a mano.
-    «Queda limpio» es lo que sobra después de restar gastos, IVA e IRPF.</div>`;
-
   h+=`<div class="cab"><h2>En qué se va el dinero</h2></div>
   <table class="tabla"><thead><tr><th>Concepto</th>
     <th style="text-align:right">Importe</th><th style="text-align:right">Peso</th></tr></thead><tbody>`
@@ -1173,6 +1149,126 @@ function vistaDinero(){
     gAnio.filter(g=>!esGastoFijo(g)), 'Gastos variables', 'var',
     `<button class="btn mini" data-acc="gasto">+ Gasto</button>
      <input class="buscar" id="q-gas" placeholder="Buscar por concepto…" autocomplete="off">`);
+
+  return h;
+}
+
+/* ─── impuestos ────────────────────────────────────────────────────────
+   El IVA y el IRPF se liquidan por trimestres, no por meses. Tenerlos en
+   su propia pestaña evita mezclar la caja del día a día con lo que hay
+   que apartar para Hacienda.                                          */
+function vistaImpuestos(){
+  const as=anios();
+  if(anioSel===null||!as.includes(anioSel)) anioSel=as[0];
+
+  const tri=trimestres(anioSel);
+  const triActual = anioSel===hoy.getFullYear() ? TRIMESTRE(aIso(hoy)) : null;
+  const conMov = tri.filter(x=>x.baseFact||x.efectivo||x.gastos);
+  const visibles = tri.filter(x=>x.baseFact||x.efectivo||x.gastos||x.n===triActual);
+
+  const anual=tri.reduce((a,x)=>({
+    baseFact:a.baseFact+x.baseFact, efectivo:a.efectivo+x.efectivo,
+    baseGasto:a.baseGasto+x.baseGasto, ivaPagar:a.ivaPagar+Math.max(0,x.ivaPagar),
+    irpf:a.irpf+x.irpf, neto:a.neto+x.neto}),
+    {baseFact:0,efectivo:0,baseGasto:0,ivaPagar:0,irpf:0,neto:0});
+
+  const aHacienda = anual.ivaPagar + anual.irpf;
+  const trimAhora = triActual ? tri[triActual-1] : null;
+  const LIMITE=['20 de abril','20 de julio','20 de octubre','30 de enero'];
+
+  let h=`<div class="anio">`
+    + as.map(a=>`<button class="btn mini${a===anioSel?' pri':''}" data-anio="${a}">${a}</button>`).join('')
+    + `<span class="nota" style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--dim)">
+        IVA ${fiscal().iva} % · IRPF ${fiscal().irpf} % · se cambian en Ajustes</span></div>`;
+
+  h+=`<div class="kpis">
+    <div class="kpi ${trimAhora && (Math.max(0,trimAhora.ivaPagar)+trimAhora.irpf)>0?'riesgo':'destaca'}">
+      <span class="et">Este trimestre</span>
+      <div class="n">${trimAhora?eur(Math.max(0,trimAhora.ivaPagar)+trimAhora.irpf):0}<small>€</small></div>
+      <div class="sub">${triActual?`T${triActual} · antes del ${LIMITE[triActual-1]}`:'—'}</div></div>
+    <div class="kpi"><span class="et">IVA del año</span>
+      <div class="n">${eur(anual.ivaPagar)}<small>€</small></div>
+      <div class="sub">lo cobrado menos lo soportado</div></div>
+    <div class="kpi"><span class="et">IRPF del año</span>
+      <div class="n">${eur(anual.irpf)}<small>€</small></div>
+      <div class="sub">${fiscal().irpf} % del beneficio</div></div>
+    <div class="kpi"><span class="et">Total a Hacienda</span>
+      <div class="n">${eur(aHacienda)}<small>€</small></div>
+      <div class="sub">en ${anioSel}</div></div></div>`;
+
+  h+=`<div class="cab"><h2>Trimestre a trimestre</h2>
+    <span class="nota">toca un trimestre para ver el detalle</span></div>
+  <table class="tabla"><thead><tr>
+    <th>Trimestre</th>
+    <th style="text-align:right">Facturado</th>
+    <th style="text-align:right">Efectivo</th>
+    <th style="text-align:right">Gasto deducible</th>
+    <th style="text-align:right">IVA</th>
+    <th style="text-align:right">IRPF ${fiscal().irpf} %</th>
+    <th style="text-align:right">Queda limpio</th>
+  </tr></thead><tbody>`;
+
+  visibles.forEach(x=>{
+    const vacio = !(x.baseFact||x.efectivo||x.gastos);
+    h+=`<tr data-tri="${x.n}" style="cursor:pointer${vacio?';opacity:.5':''}">
+      <td><b>T${x.n}</b> <span style="color:var(--dim);font-size:11.5px">${
+        ['ene–mar','abr–jun','jul–sep','oct–dic'][x.n-1]}</span>
+        ${x.n===triActual?' <span class="pill">en curso</span>':''}</td>
+      <td class="num">${eur(x.baseFact)} €</td>
+      <td class="num" style="color:var(--dim)">${eur(x.efectivo)} €</td>
+      <td class="num" style="color:var(--dim)">${eur(x.baseGasto)} €${
+        x.sinFactura?`<br><span style="color:var(--alerta);font-size:11px">+${eur(x.sinFactura)} sin factura</span>`:''}</td>
+      <td class="num ${x.ivaPagar>0?'neg':'pos'}">${eur(x.ivaPagar)} €</td>
+      <td class="num ${x.irpf>0?'neg':''}">${eur(x.irpf)} €</td>
+      <td class="num ${x.neto<0?'neg':'pos'}"><b>${eur(x.neto)} €</b></td></tr>`;
+
+    if(triAbierto===x.n){
+      h+=`<tr class="detalle"><td colspan="7">
+        <div class="det">
+          <div class="det-b">
+            <b>IVA</b>
+            <div class="lin"><span>Cobrado en facturas</span><b>${eur(x.ivaRep)} €</b></div>
+            <div class="lin"><span>Pagado en compras</span><b>−${eur(x.ivaSop)} €</b></div>
+            <div class="lin res"><span>${x.ivaPagar>=0?'A ingresar':'A tu favor'}</span>
+              <b>${eur(Math.abs(x.ivaPagar))} €</b></div>
+            <p>De cada factura que cobras, el ${fiscal().iva} % nunca fue tuyo.
+               Lo que pagas de IVA al comprar se resta.</p>
+          </div>
+          <div class="det-b">
+            <b>IRPF</b>
+            <div class="lin"><span>Facturado</span><b>${eur(x.baseFact)} €</b></div>
+            <div class="lin"><span>Gasto con factura</span><b>−${eur(x.baseGasto)} €</b></div>
+            <div class="lin"><span>Beneficio</span><b>${eur(x.beneficio)} €</b></div>
+            <div class="lin res"><span>${fiscal().irpf} % a cuenta</span><b>${eur(x.irpf)} €</b></div>
+            <p>Hacienda no espera a fin de año: cada trimestre se adelanta
+               una parte de lo ganado.</p>
+          </div>
+          <div class="det-b">
+            <b>Efectivo</b>
+            <div class="lin"><span>Cobrado sin factura</span><b>${eur(x.efectivo)} €</b></div>
+            <div class="lin res"><span>Impuestos que genera</span><b>0 €</b></div>
+            <p>Queda fuera del IVA y del IRPF. Entra en caja pero no aparece
+               en ninguna liquidación.</p>
+          </div>
+        </div></td></tr>`;
+    }
+  });
+
+  if(conMov.length>1){
+    h+=`<tr style="border-top:2px solid var(--linea2)">
+      <td><b>Año ${anioSel}</b></td>
+      <td class="num"><b>${eur(anual.baseFact)} €</b></td>
+      <td class="num" style="color:var(--dim)"><b>${eur(anual.efectivo)} €</b></td>
+      <td class="num" style="color:var(--dim)"><b>${eur(anual.baseGasto)} €</b></td>
+      <td class="num neg"><b>${eur(anual.ivaPagar)} €</b></td>
+      <td class="num neg"><b>${eur(anual.irpf)} €</b></td>
+      <td class="num ${anual.neto<0?'neg':'pos'}"><b>${eur(anual.neto)} €</b></td></tr>`;
+  }
+  h+=`</tbody></table>`;
+
+  h+=`<div class="aviso"><b>«Queda limpio» es lo que sobra de verdad:</b>
+    todo lo cobrado, menos los gastos, menos el IVA y menos el IRPF.
+    Lo cobrado en efectivo suma a la caja pero no genera impuestos.</div>`;
 
   return h;
 }
@@ -1778,16 +1874,17 @@ function abrirGasto(id){
           .map(([k,v])=>`<option value="${k}"${k===g.categoria?' selected':''}>${v}</option>`).join('')}</select></div>
       <div class="campo"><label for="g-via">Pagado con</label>
         <select id="g-via">${VIAS.map(v=>`<option${v===via(g.via)?' selected':''}>${v}</option>`).join('')}</select></div></div>
-    <div class="campo"><label for="g-tipo">¿Se repite todos los meses?</label>
-      <select id="g-tipo">
-        <option value="0"${!esGastoFijo(g)?' selected':''}>No · gasto variable</option>
-        <option value="1"${esGastoFijo(g)?' selected':''}>Sí · gasto fijo</option>
-      </select></div>
     <div class="campo"><label for="g-fact">¿Tienes factura?</label>
       <select id="g-fact">
         <option value="1"${g.conFactura!==false?' selected':''}>Sí, el IVA se puede desgravar</option>
         <option value="0"${g.conFactura===false?' selected':''}>No</option>
       </select></div>
+    <div class="campo"><label for="g-tipo">¿Se repite todos los meses?</label>
+      <select id="g-tipo">
+        <option value="0"${!esGastoFijo(g)?' selected':''}>No · gasto variable</option>
+        <option value="1"${esGastoFijo(g)?' selected':''}>Sí · gasto fijo</option>
+      </select></div>
+
     <div class="acc">
       <button class="btn" type="button" data-cerrar>Cancelar</button>
       ${editG?`<button class="btn borrar" type="button" id="g-del">Eliminar</button>`:''}
@@ -2094,7 +2191,9 @@ function pintar(){
     + `${D.cobros.length} cobros · ${D.gastos.length} gastos · ${D.clientes.length} clientes`;
   const c=$('#cuerpo');
   c.innerHTML = vista==='plazas'?vistaPlazas() : vista==='dinero'?vistaDinero()
-    : vista==='clientes'?vistaClientes() : vista==='ajustes'?vistaAjustes() : vistaRegistro();
+    : vista==='clientes'?vistaClientes()
+    : vista==='impuestos'?vistaImpuestos()
+    : vista==='ajustes'?vistaAjustes() : vistaRegistro();
   document.querySelectorAll('.tab').forEach(t=>
     t.setAttribute('aria-selected', String(t.dataset.v===vista)));
   pintarAvisoMemoria();
@@ -2129,6 +2228,11 @@ function pintar(){
     abrirCliente(r.dataset.c||null, r.dataset.nom)));
   c.querySelectorAll('tr[data-i]').forEach(r=>r.addEventListener('click',()=>abrirIngreso(r.dataset.i)));
   c.querySelectorAll('tr[data-f]').forEach(r=>r.addEventListener('click',()=>abrirFijo(r.dataset.f)));
+  c.querySelectorAll('tr[data-tri]').forEach(r=>r.addEventListener('click',()=>{
+    const n=+r.dataset.tri;
+    triAbierto = triAbierto===n ? null : n;
+    pintar();
+  }));
   c.querySelectorAll('[data-mes-toggle]').forEach(b=>b.addEventListener('click',()=>{
     const k=b.dataset.mesToggle;
     mesesTocados.add(k.split('-')[0]);
