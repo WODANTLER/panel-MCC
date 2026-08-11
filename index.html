@@ -318,9 +318,24 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .grupo-cab em{margin-left:auto;font-style:normal;font-family:var(--mono);
   font-size:13.5px;font-weight:600}
 .grupo.abierto .grupo-cab{background:var(--oro-suave);border-bottom:1px solid var(--linea)}
+.grupo:not(.abierto)>.tabla{display:none}
+/* al buscar se abren todos los meses, si no habría resultados escondidos */
+.buscando .grupo>.tabla{display:table!important}
+.buscando .grupo-cab i{visibility:hidden}
 .grupo.abierto .grupo-cab i,.grupo.abierto .grupo-cab em{color:var(--oro)}
 .grupo .tabla td{padding:9px 14px}
 .pill.sinf{color:var(--alerta);border-color:#E9C4BC;background:var(--alerta-suave)}
+
+/* ── plantillas de gasto fijo ────────────────────────────────────────── */
+.plantillas{border:1px solid var(--linea2);margin:12px 0 4px;background:#fff}
+.plantillas-cab{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--linea)}
+.plantillas-cab b{font-family:var(--display);font-variation-settings:'wdth' 84,'wght' 700;
+  font-size:11.5px;letter-spacing:.08em;text-transform:uppercase}
+.plantillas-cab span{font-family:var(--sans);font-size:12px;color:var(--dim)}
+.plantillas-cab em{margin-left:auto;font-style:normal;font-family:var(--mono);
+  font-size:12.5px;font-weight:600;color:var(--oro)}
+.plantillas .tabla td{padding:8px 14px}
 
 /* ── detalle de un trimestre ─────────────────────────────────────────── */
 .detalle td{padding:0!important;background:var(--panel)}
@@ -628,8 +643,20 @@ const salida=t=>sumar(aFecha(t.entra),Math.max(1,t.dias)-1);
    si arranca en un dia cualquiera, las semanas no se distinguen y el
    calendario se lee como una tira sin estructura. */
 const lunes=d=>{const x=new Date(d); x.setDate(x.getDate()-((x.getDay()+6)%7)); x.setHours(0,0,0,0); return x;};
-const NF=new Intl.NumberFormat('es-ES');
-const eur=n=>NF.format(Math.round(n||0));
+/* Acepta coma o punto: en España se escribe 544,50 y el navegador no
+   siempre lo entiende según el idioma que tenga configurado. */
+const numero = v => {
+  let t = String(v ?? '').trim();
+  // Si vienen los dos, el punto es separador de miles: 1.234,56
+  if (t.includes(',') && t.includes('.')) t = t.replace(/\./g, '');
+  const x = parseFloat(t.replace(',', '.'));
+  return isFinite(x) ? x : 0;
+};
+const NF0=new Intl.NumberFormat('es-ES',{maximumFractionDigits:0});
+const NF2=new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+/* Solo muestra céntimos cuando los hay: 544 se lee mejor que 544,00. */
+const eur=n=>{ const v=Math.round((n||0)*100)/100;
+  return Number.isInteger(v) ? NF0.format(v) : NF2.format(v); };
 const fCorta=d=>d.toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
 const MESES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>
@@ -877,6 +904,7 @@ let vista='plazas', anioSel=null;
 const mesesAbiertos=new Set();   // meses desplegados en Wallet
 const mesesTocados=new Set();    // bloques donde el usuario ya eligió
 let triAbierto=null;             // trimestre con el detalle desplegado
+let plantillasAbiertas=false;    // lista de gastos fijos recurrentes
 let mesRef=new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 const $ = s => document.querySelector(s);
 
@@ -1061,94 +1089,95 @@ function vistaDinero(){
       :`<tr><td colspan="3" class="vacio">Sin gastos registrados en ${anioSel}.</td></tr>`)
     + `</tbody></table>`;
 
-  /* Ingresos. Antes no se podian tocar: los 94 movimientos importados de
-     2026 no aparecian en ninguna pantalla y no habia forma de corregirlos. */
-  const ingA=D.cobros.filter(c=>aFecha(c.fecha).getFullYear()===anioSel)
-                     .sort((a,b)=>a.fecha<b.fecha?1:-1);
-  h+=`<div class="cab" style="margin-top:30px"><h2>Ingresos</h2>
-    <span class="nota">${ingA.length} movimientos · toca uno para corregirlo</span></div>
-    <div class="anio"><button class="btn mini" data-acc="ingreso">+ Ingreso</button>
-      <input class="buscar" id="q-ing" placeholder="Buscar por concepto…" autocomplete="off"></div>
-  <table class="tabla"><thead><tr><th>Concepto</th><th>Cobro</th><th>Fecha</th>
-    <th style="text-align:right">Importe</th></tr></thead><tbody id="tb-ing">`
-    + (ingA.length?ingA.map(c=>`<tr data-i="${c.id}" data-q="${esc((c.concepto||'').toLowerCase())}" style="cursor:pointer">
-        <td>${esc(c.concepto)}${c.trabajoId?' <span class="pill">de un trabajo</span>':''}</td>
-        <td><span class="pill">${esc(via(c.via))}</span></td>
-        <td class="num">${fCorta(aFecha(c.fecha))}</td>
-        <td class="num pos">${eur(c.importe)} €</td></tr>`).join('')
-      :`<tr><td colspan="4" class="vacio">Sin ingresos en ${anioSel}.</td></tr>`)
-    + `</tbody></table>`;
+  /* Ingresos, agrupados por mes igual que los gastos. */
+  const ingA = D.cobros.filter(c=>aFecha(c.fecha).getFullYear()===anioSel);
+  h += bloqueMovs({
+    lista: ingA, titulo:'Ingresos', id:'ing',
+    vacio:`Sin ingresos en ${anioSel}.`,
+    acciones:`<button class="btn mini" data-acc="ingreso">+ Ingreso</button>
+      <input class="buscar" id="q-ing" placeholder="Buscar por concepto…" autocomplete="off">`,
+    fila: c=>`<tr data-i="${c.id}" data-q="${esc((c.concepto||'').toLowerCase())}" style="cursor:pointer">
+      <td>${esc(c.concepto)}${c.trabajoId?' <span class="pill">de un trabajo</span>':''}</td>
+      <td><span class="pill">${esc(c.via)}</span>${
+        esFacturado(c)?'':' <span class="pill sinf">sin factura</span>'}</td>
+      <td class="num" style="color:var(--dim)">${fCorta(aFecha(c.fecha))}</td>
+      <td class="num pos">${eur(c.importe)} €</td></tr>`});
 
   /* ── gastos, separados en fijos y variables y agrupados por mes ─────
      Fijo es lo que se repite todos los meses; variable, lo que cambia.
      Agrupar por mes es lo que permite comparar y detectar el mes raro. */
   const gAnio = D.gastos.filter(g=>aFecha(g.fecha).getFullYear()===anioSel);
 
-  function bloqueGastos(lista, titulo, id, acciones){
-    const total = lista.reduce((a,g)=>a+(g.importe||0),0);
+  /* Agrupa por mes cualquier lista de movimientos. Las filas se pintan
+     siempre y se ocultan por CSS: así el buscador puede encontrar algo
+     dentro de un mes plegado y abrirlo solo. */
+  function bloqueMovs({lista, titulo, id, acciones, fila, vacio}){
+    const total = lista.reduce((a,x)=>a+(x.importe||0),0);
     const meses = {};
-    lista.forEach(g=>{ const m=aFecha(g.fecha).getMonth(); (meses[m]=meses[m]||[]).push(g); });
+    lista.forEach(x=>{ const m=aFecha(x.fecha).getMonth(); (meses[m]=meses[m]||[]).push(x); });
     const orden = Object.keys(meses).map(Number).sort((a,b)=>b-a);
 
-    let x = `<div class="cab" style="margin-top:30px"><h2>${titulo}</h2>
-      <span class="nota">${lista.length} movimientos · ${eur(total)} € en ${anioSel}</span></div>
+    let out = `<div class="cab" style="margin-top:30px"><h2>${titulo}</h2>
+      <span class="nota">${lista.length} movimiento${lista.length===1?'':'s'} · ${eur(total)} € en ${anioSel}</span></div>
       <div class="anio">${acciones}</div>`;
 
-    if(!orden.length){
-      x += `<div class="vacio" style="border:1px solid var(--linea)">Sin gastos ${
-        id==='fij'?'fijos':'variables'} en ${anioSel}.</div>`;
-      return x;
-    }
+    if(!orden.length) return out + `<div class="vacio" style="border:1px solid var(--linea)">${vacio}</div>`;
 
-    x += `<div id="tb-${id}">`;
+    out += `<div id="tb-${id}">`;
     orden.forEach((m,i)=>{
-      const gs = meses[m].sort((a,b)=>a.fecha<b.fecha?1:-1);
-      const sub = gs.reduce((a,g)=>a+(g.importe||0),0);
+      const xs = meses[m].sort((a,b)=>a.fecha<b.fecha?1:-1);
+      const sub = xs.reduce((a,x)=>a+(x.importe||0),0);
       const clave = id+'-'+m;
       const abierto = mesesAbiertos.has(clave) || (i===0 && !mesesTocados.has(id));
-      x += `<section class="grupo${abierto?' abierto':''}">
+      out += `<section class="grupo${abierto?' abierto':''}">
         <button class="grupo-cab" data-mes-toggle="${clave}">
-          <i>${abierto?'−':'+'}</i>
-          <b>${MESES[m]}</b>
-          <span>${gs.length} gasto${gs.length>1?'s':''}</span>
+          <i>${abierto?'−':'+'}</i><b>${MESES[m]}</b>
+          <span>${xs.length} movimiento${xs.length===1?'':'s'}</span>
           <em>${eur(sub)} €</em>
-        </button>`;
-      if(abierto){
-        x += `<table class="tabla"><tbody>`
-          + gs.map(g=>`<tr data-g="${g.id}" data-q="${esc((g.concepto||'').toLowerCase())}" style="cursor:pointer">
-              <td>${esc(g.concepto)}</td>
-              <td><span class="pill">${g.categoria||'otro'}</span>${
-                g.conFactura===false?' <span class="pill sinf">sin factura</span>':''}</td>
-              <td class="num" style="color:var(--dim)">${fCorta(aFecha(g.fecha))}</td>
-              <td class="num">${eur(g.importe)} €</td></tr>`).join('')
-          + `</tbody></table>`;
-      }
-      x += `</section>`;
+        </button>
+        <table class="tabla"><tbody>${xs.map(fila).join('')}</tbody></table>
+      </section>`;
     });
-    x += `</div>`;
-    return x;
+    return out + `</div>`;
   }
 
-  h += bloqueGastos(
-    gAnio.filter(esGastoFijo), 'Gastos fijos', 'fij',
-    `<button class="btn mini" data-acc="fijo">+ Plantilla</button>
+  const filaGasto = g=>`<tr data-g="${g.id}" data-q="${esc((g.concepto||'').toLowerCase())}" style="cursor:pointer">
+      <td>${esc(g.concepto)}</td>
+      <td><span class="pill">${g.categoria||'otro'}</span>${
+        g.conFactura===false?' <span class="pill sinf">sin factura</span>':''}</td>
+      <td class="num" style="color:var(--dim)">${fCorta(aFecha(g.fecha))}</td>
+      <td class="num">${eur(g.importe)} €</td></tr>`;
+
+  h += bloqueMovs({
+    lista: gAnio.filter(esGastoFijo), titulo:'Gastos fijos', id:'fij', fila:filaGasto,
+    vacio:`Sin gastos fijos en ${anioSel}.`,
+    acciones:`<button class="btn mini" data-acc="fijo">+ Plantilla</button>
      <button class="btn mini" data-acc="generar">Generar los de este mes</button>
-     <span class="nota" style="font-family:var(--mono);font-size:11px;color:var(--dim)">
-       ${D.fijos.length} plantilla${D.fijos.length===1?'':'s'} guardada${D.fijos.length===1?'':'s'}</span>`);
+     ${D.fijos.length?`<button class="btn mini" data-acc="verplantillas">
+        ${plantillasAbiertas?'−':'+'} ${D.fijos.length} plantilla${D.fijos.length===1?'':'s'}</button>`:''}`});
 
-  if(D.fijos.length){
-    h += `<table class="tabla" style="margin-top:10px"><thead><tr>
-        <th>Plantilla</th><th>Día</th><th style="text-align:right">Importe al mes</th></tr></thead><tbody>`
-      + D.fijos.map(f=>`<tr data-f="${f.id}" style="cursor:pointer">
-          <td>${esc(f.concepto)}</td><td class="num">${f.dia||1}</td>
+  if(D.fijos.length && plantillasAbiertas){
+    const totalPl = D.fijos.reduce((a,f)=>a+(f.importe||0),0);
+    h += `<section class="plantillas">
+      <div class="plantillas-cab">
+        <b>Plantillas</b>
+        <span>lo que se crea cada mes al pulsar «Generar»</span>
+        <em>${eur(totalPl)} €/mes</em>
+      </div>
+      <table class="tabla"><tbody>`
+      + [...D.fijos].sort((a,b)=>(b.importe||0)-(a.importe||0))
+        .map(f=>`<tr data-f="${f.id}" style="cursor:pointer">
+          <td>${esc(f.concepto)}</td>
+          <td class="num" style="color:var(--dim)">día ${f.dia||1}</td>
           <td class="num">${eur(f.importe)} €</td></tr>`).join('')
-      + `</tbody></table>`;
+      + `</tbody></table></section>`;
   }
 
-  h += bloqueGastos(
-    gAnio.filter(g=>!esGastoFijo(g)), 'Gastos variables', 'var',
-    `<button class="btn mini" data-acc="gasto">+ Gasto</button>
-     <input class="buscar" id="q-gas" placeholder="Buscar por concepto…" autocomplete="off">`);
+  h += bloqueMovs({
+    lista: gAnio.filter(g=>!esGastoFijo(g)), titulo:'Gastos variables', id:'var', fila:filaGasto,
+    vacio:`Sin gastos variables en ${anioSel}.`,
+    acciones:`<button class="btn mini" data-acc="gasto">+ Gasto</button>
+     <input class="buscar" id="q-gas" placeholder="Buscar por concepto…" autocomplete="off">`});
 
   return h;
 }
@@ -1559,7 +1588,7 @@ function abrirTrabajo(id, previo){
       <div class="campo"><label for="t-dias">Días que se queda</label>
         <input type="number" id="t-dias" min="1" max="60" value="${t.dias}" inputmode="numeric"></div></div>
     <div class="campo"><label for="t-pres">Presupuesto sin IVA (€)</label>
-      <input type="number" id="t-pres" min="0" step="10" value="${t.presupuesto||''}" placeholder="350" inputmode="decimal"></div>
+      <input type="number" id="t-pres" min="0" step="0.01" value="${t.presupuesto||''}" placeholder="350" inputmode="decimal"></div>
     <div id="t-sena"></div>
     <div class="cobros" id="t-materiales"></div>
     ${cobrosHtml}
@@ -1594,7 +1623,7 @@ function abrirTrabajo(id, previo){
     }));
     $('#m-add').addEventListener('click',()=>{
       const n=$('#m-nom').value.trim(); if(!n) return;
-      mats.push({nombre:n, coste:+$('#m-cos').value||0});
+      mats.push({nombre:n, coste:numero($('#m-cos').value)});
       pintarMats(); $('#m-nom').focus();
     });
   }
@@ -1612,7 +1641,7 @@ function abrirTrabajo(id, previo){
        la lista de cobros de abajo. */
     const yaCobrado = editT ? cobrado(editT) > 0 : false;
     if(!pideSena(serv) || yaCobrado){ cont.innerHTML=''; return; }
-    const mitad=Math.round((+$('#t-pres').value||0)/2);
+    const mitad=Math.round((numero($('#t-pres').value))/2);
     cont.innerHTML = `<div class="sena">
       <label><input type="checkbox" id="s-cobrada"> Cobrar ${editT?'la':'ahora la'} señal del 50 %</label>
       <div class="mini-form" style="grid-template-columns:1fr 1fr">
@@ -1661,7 +1690,7 @@ function abrirTrabajo(id, previo){
   const selVia=$('#c-via'); if(selVia){ selVia.addEventListener('change',notaCobro); notaCobro(); }
 
   const add=$('#c-add'); if(add) add.addEventListener('click',()=>{
-    const v=+$('#c-imp').value; if(!v) return;
+    const v=numero($('#c-imp').value); if(!v) return;
     const via=$('#c-via').value;
     D.cobros.push({id:nid(),trabajoId:editT.id,importe:v,via,
       facturado:llevaImpuestos(via),
@@ -1684,7 +1713,7 @@ function guardarTrabajo(){
     estado:$('#t-estado').value,
     entra:$('#t-entra').value||aIso(hoy),
     dias:Math.max(1,+$('#t-dias').value||1),
-    presupuesto:+$('#t-pres').value||0,
+    presupuesto:numero($('#t-pres').value),
     materiales:mats
   };
   let destino;
@@ -1693,7 +1722,7 @@ function guardarTrabajo(){
 
   const chk=$('#s-cobrada');
   if(chk && chk.checked){
-    const imp=+$('#s-imp').value||0;
+    const imp=numero($('#s-imp').value);
     if(imp) D.cobros.push({id:nid(), trabajoId:destino.id, importe:imp,
       via:$('#s-via').value, fecha:aIso(hoy), concepto:`${destino.coche} · señal 50%`});
   }
@@ -1846,7 +1875,7 @@ function abrirCobroRapido(trabajoId, sugerido){
     <div class="acc"><button class="btn" type="button" data-cerrar>Cancelar</button></div>`;
   $('#hoja').classList.add('on');
   $('#hojaC').querySelectorAll('[data-via]').forEach(b=>b.addEventListener('click',()=>{
-    const imp=+$('#cr-imp').value||0;
+    const imp=numero($('#cr-imp').value);
     if(!imp){ $('#cr-imp').focus(); return; }
     D.cobros.push({id:nid(), trabajoId:t.id, importe:imp, via:b.dataset.via,
       facturado:llevaImpuestos(b.dataset.via),
@@ -1865,7 +1894,7 @@ function abrirGasto(id){
       <input id="g-con" value="${esc(g.concepto)}" placeholder="Bobinas PPF" autocomplete="off"></div>
     <div class="fila2">
       <div class="campo"><label for="g-imp">Importe (€)</label>
-        <input type="number" id="g-imp" min="0" step="10" value="${g.importe||''}" inputmode="decimal"></div>
+        <input type="number" id="g-imp" min="0" step="0.01" value="${g.importe||''}" inputmode="decimal"></div>
       <div class="campo"><label for="g-fecha">Fecha</label>
         <input type="date" id="g-fecha" value="${g.fecha}"></div></div>
     <div class="fila2">
@@ -1894,7 +1923,7 @@ function abrirGasto(id){
 
   $('#g-ok').addEventListener('click',()=>{
     const d={fecha:$('#g-fecha').value||aIso(hoy), concepto:$('#g-con').value.trim()||'Sin concepto',
-      importe:+$('#g-imp').value||0, via:$('#g-via').value, categoria:$('#g-cat').value,
+      importe:numero($('#g-imp').value), via:$('#g-via').value, categoria:$('#g-cat').value,
       conFactura:$('#g-fact').value==='1', fijo:$('#g-tipo').value==='1'};
     if(editG) Object.assign(editG,d); else D.gastos.push(Object.assign({id:nid()},d));
     cerrar(); guardar(); pintar();
@@ -1916,7 +1945,7 @@ function abrirIngreso(id){
       <input id="i-con" value="${esc(c.concepto)}" placeholder="Range Rover · pulido" autocomplete="off"></div>
     <div class="fila2">
       <div class="campo"><label for="i-imp">Importe (€)</label>
-        <input type="number" id="i-imp" min="0" step="10" value="${c.importe||''}" inputmode="decimal"></div>
+        <input type="number" id="i-imp" min="0" step="0.01" value="${c.importe||''}" inputmode="decimal"></div>
       <div class="campo"><label for="i-fecha">Fecha</label>
         <input type="date" id="i-fecha" value="${c.fecha}"></div></div>
     <div class="fila2">
@@ -1941,7 +1970,7 @@ function abrirIngreso(id){
 
   /* Desglose en vivo: cuanto de lo que entra es base y cuanto es IVA. */
   function desglose(){
-    const imp=+$('#i-imp').value||0, fact=$('#i-fact').value==='1';
+    const imp=numero($('#i-imp').value), fact=$('#i-fact').value==='1';
     const base=fact?imp/(1+fiscal().iva/100):imp;
     $('#i-desglose').innerHTML = fact
       ? `<span>Base <b>${eur(base)} €</b></span><span>IVA ${fiscal().iva} % <b>${eur(imp-base)} €</b></span>
@@ -1955,7 +1984,7 @@ function abrirIngreso(id){
 
   $('#i-ok').addEventListener('click',()=>{
     const d={fecha:$('#i-fecha').value||aIso(hoy), concepto:$('#i-con').value.trim()||'Sin concepto',
-      importe:+$('#i-imp').value||0, via:$('#i-via').value, facturado:$('#i-fact').value==='1',
+      importe:numero($('#i-imp').value), via:$('#i-via').value, facturado:$('#i-fact').value==='1',
       trabajoId:$('#i-trab').value||null};
     if(editI) Object.assign(editI,d); else D.cobros.push(Object.assign({id:nid()},d));
     cerrar(); guardar(); pintar();
@@ -1975,7 +2004,7 @@ function abrirFijo(id){
       <input id="f-con" value="${esc(f.concepto)}" placeholder="Alquiler nave" autocomplete="off"></div>
     <div class="fila2">
       <div class="campo"><label for="f-imp">Importe al mes (€)</label>
-        <input type="number" id="f-imp" min="0" step="10" value="${f.importe||''}" inputmode="decimal"></div>
+        <input type="number" id="f-imp" min="0" step="0.01" value="${f.importe||''}" inputmode="decimal"></div>
       <div class="campo"><label for="f-dia">Día de pago</label>
         <input type="number" id="f-dia" min="1" max="28" value="${f.dia||1}" inputmode="numeric"></div></div>
     <div class="fila2">
@@ -1989,7 +2018,7 @@ function abrirFijo(id){
       <button class="btn pri" type="button" id="f-ok">Guardar</button></div>`;
   $('#hoja').classList.add('on'); $('#f-con').focus();
   $('#f-ok').addEventListener('click',()=>{
-    const d={concepto:$('#f-con').value.trim()||'Sin concepto', importe:+$('#f-imp').value||0,
+    const d={concepto:$('#f-con').value.trim()||'Sin concepto', importe:numero($('#f-imp').value),
       dia:Math.max(1,Math.min(28,+$('#f-dia').value||1)), categoria:$('#f-cat').value, via:$('#f-via').value};
     if(editF) Object.assign(editF,d); else D.fijos.push(Object.assign({id:nid()},d));
     cerrar(); guardar(); pintar();
@@ -2108,14 +2137,14 @@ function abrirServicio(id){
       <div class="campo"><label for="s-dias">Días que ocupa la plaza</label>
         <input type="number" id="s-dias" min="1" max="60" value="${v.d}" inputmode="numeric"></div>
       <div class="campo"><label for="s-pre">Precio sin IVA (€)</label>
-        <input type="number" id="s-pre" min="0" step="10" value="${v.p||''}" placeholder="0 = a presupuestar" inputmode="decimal"></div></div>
+        <input type="number" id="s-pre" min="0" step="0.01" value="${v.p||''}" placeholder="0 = a presupuestar" inputmode="decimal"></div></div>
     <div class="acc">
       <button class="btn" type="button" data-cerrar>Cancelar</button>
       ${x?`<button class="btn borrar" type="button" id="s-del">Eliminar</button>`:''}
       <button class="btn pri" type="button" id="s-ok">Guardar</button></div>`;
   $('#hoja').classList.add('on'); $('#s-nom').focus();
   $('#s-ok').addEventListener('click',()=>{
-    const d={n:$('#s-nom').value.trim(), d:Math.max(1,+$('#s-dias').value||1), p:+$('#s-pre').value||0};
+    const d={n:$('#s-nom').value.trim(), d:Math.max(1,+$('#s-dias').value||1), p:numero($('#s-pre').value)};
     if(!d.n){ $('#s-nom').focus(); return; }
     if(x) Object.assign(x,d); else D.servicios.push(Object.assign({id:nid()},d));
     cerrar(); guardar(); pintar();
@@ -2218,6 +2247,7 @@ function pintar(){
     else if(a==='cliente') abrirCliente(null);
     else if(a==='ingreso') abrirIngreso(null);
     else if(a==='fijo') abrirFijo(null);
+    else if(a==='verplantillas'){ plantillasAbiertas=!plantillasAbiertas; pintar(); }
     else if(a==='generar') generarFijos();
     else if(a==='vaciar') vaciarMovimientos();
     else if(a==='plaza') abrirPlaza(null);
@@ -2255,8 +2285,14 @@ function pintar(){
     if(!inp||!cuerpo) return;
     inp.addEventListener('input',()=>{
       const t=inp.value.trim().toLowerCase();
+      cuerpo.classList.toggle('buscando', !!t);
       cuerpo.querySelectorAll('tr[data-q]').forEach(r=>{
         r.style.display = !t || r.dataset.q.includes(t) ? '' : 'none';
+      });
+      // un mes sin resultados desaparece entero
+      cuerpo.querySelectorAll('.grupo').forEach(g=>{
+        const hay = [...g.querySelectorAll('tr[data-q]')].some(r=>r.style.display!=='none');
+        g.style.display = hay ? '' : 'none';
       });
     });
   });
