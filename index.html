@@ -408,25 +408,34 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 /* ── ruedas de reparto ───────────────────────────────────────────────── */
 .ruedas{display:grid;gap:14px;margin-bottom:8px}
 @media(min-width:720px){.ruedas{grid-template-columns:1fr 1fr}}
+/* Las dos columnas comparten rejilla vertical: cabecera, subtítulo,
+   selector, rueda y leyenda ocupan la misma altura en las dos, así los
+   gráficos quedan a la misma altura pase lo que pase con el texto. */
 .rbloque{border:1px solid var(--linea2);background:#fff;padding:16px;
-  display:flex;flex-direction:column;align-items:center}
-.rbloque-cab{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
-  justify-content:center;margin-bottom:6px;width:100%}
-.rbloque-cab b{font-family:var(--display);font-variation-settings:'wdth' 82,'wght' 700;
-  font-size:14px;letter-spacing:.05em;text-transform:capitalize}
-.rbloque-cab span{width:100%;text-align:center;font-family:var(--mono);
-  font-size:11px;color:var(--dim)}
-.rbloque-cab .flecha{padding:2px 9px;font-size:15px;line-height:1.1}
-.rbloque-cab .flecha[disabled]{opacity:.3;cursor:not-allowed}
-.tri-sel{display:flex;gap:1px;background:var(--linea);border:1px solid var(--linea);
-  margin:2px 0 8px;width:100%}
+  display:grid;grid-template-rows:26px 20px 34px auto 1fr;justify-items:center;gap:8px}
+.rbloque-cab{display:grid;grid-template-columns:34px 1fr 34px;align-items:center;
+  width:100%;gap:6px}
+.rbloque-cab b{grid-column:2;text-align:center;
+  font-family:var(--display);font-variation-settings:'wdth' 82,'wght' 700;
+  font-size:14px;letter-spacing:.05em;text-transform:capitalize;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb-nav{display:flex;align-items:center;justify-content:center;min-height:26px}
+.rbloque-cab .flecha{appearance:none;background:#fff;border:1px solid var(--linea2);
+  color:var(--tinta);cursor:pointer;padding:1px 8px;font-size:15px;line-height:1.2;
+  font-family:var(--display);transition:border-color .16s,color .16s}
+.rbloque-cab .flecha:hover{border-color:var(--oro);color:var(--oro)}
+.rbloque-cab .flecha[disabled]{opacity:.28;cursor:not-allowed}
+.rbloque-sub{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:center}
+.tri-sel,.mes-sel{display:flex;gap:1px;background:var(--linea);
+  border:1px solid var(--linea);width:100%;overflow:hidden}
+.mes-sel{overflow-x:auto}
 .tri-btn{flex:1;appearance:none;background:var(--panel);border:0;cursor:pointer;
   padding:6px 4px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;
   color:var(--dim);transition:background .16s,color .16s}
 .tri-btn:hover{background:#fff;color:var(--tinta)}
 .tri-btn.on{background:var(--oro-suave);color:var(--oro);font-weight:600}
 .tri-btn:focus-visible{outline:2px solid var(--oro);outline-offset:-2px}
-.rueda{width:100%;max-width:210px;height:auto;margin:4px 0 10px}
+.rueda{width:100%;max-width:210px;height:auto;margin:0;align-self:center}
 .rueda circle{transition:opacity .16s}
 .rueda:hover circle{opacity:.55}
 .rueda circle:hover{opacity:1}
@@ -435,7 +444,7 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .r-et{text-anchor:middle;font-family:var(--mono);font-size:8px;
   letter-spacing:.1em;text-transform:uppercase;fill:var(--dim)}
 
-.leyenda-r{list-style:none;margin:0;padding:0;width:100%}
+.leyenda-r{list-style:none;margin:6px 0 0;padding:0;width:100%;align-self:start}
 .leyenda-r li{display:flex;align-items:center;gap:9px;padding:6px 2px;
   border-bottom:1px solid var(--linea);font-size:13px}
 .leyenda-r li:last-child{border-bottom:0}
@@ -1350,8 +1359,12 @@ function vistaDinero(){
 
   <div class="ruedas">
     <section class="rbloque">
-      <div class="rbloque-cab"><b>${etPeriodo}</b>
-        <span>${eur(rAnio.entra)} € entraron</span></div>
+      <div class="rbloque-cab">
+        <span class="rb-nav"></span>
+        <b>${etPeriodo}</b>
+        <span class="rb-nav"></span>
+      </div>
+      <div class="rbloque-sub">${eur(rAnio.entra)} € entraron</div>
       <div class="tri-sel">
         <button class="tri-btn${triRueda===null?' on':''}" data-tri-rueda="">Año</button>
         ${[1,2,3,4].map(t=>`<button class="tri-btn${triRueda===t?' on':''}" data-tri-rueda="${t}">T${t}</button>`).join('')}
@@ -1362,10 +1375,14 @@ function vistaDinero(){
 
     <section class="rbloque">
       <div class="rbloque-cab">
-        <button class="btn mini flecha" data-rmes="-1" ${iMes<=0?'disabled':''}>‹</button>
+        <span class="rb-nav"><button class="flecha" data-rmes="-1" ${iMes<=0?'disabled':''}>‹</button></span>
         <b>${MESES[mesRueda]} ${anioSel}</b>
-        <button class="btn mini flecha" data-rmes="1" ${iMes>=mesesConDatos.length-1?'disabled':''}>›</button>
-        <span>${eur(rMes.entra)} € entraron</span></div>
+        <span class="rb-nav"><button class="flecha" data-rmes="1" ${iMes>=mesesConDatos.length-1?'disabled':''}>›</button></span>
+      </div>
+      <div class="rbloque-sub">${eur(rMes.entra)} € entraron</div>
+      <div class="mes-sel">
+        ${mesesConDatos.map(m=>`<button class="tri-btn${m===mesRueda?' on':''}" data-mes-rueda="${m}">${MESES[m]}</button>`).join('')}
+      </div>
       ${rueda(partesDe(rMes), eur(rMes.libre)+' €', 'queda limpio')}
       ${leyenda(rMes)}
     </section>
@@ -2005,11 +2022,18 @@ function abrirTrabajo(id, previo){
   $('#t-serv').addEventListener('change',pintarSenaConEstado);
   $('#t-pres').addEventListener('input',pintarSenaConEstado);
 
+  /* Al elegir servicio se autocompletan días e importe, pero solo si el
+     usuario no los ha tocado ya. Antes los pisaba siempre y quien ponía
+     3 días y después cambiaba de servicio se quedaba con 1 sin enterarse. */
+  let diasTocados=false, presTocado=false;
+  $('#t-dias').addEventListener('input',()=>{ diasTocados=true; });
+  $('#t-pres').addEventListener('input',()=>{ presTocado=true; });
+
   $('#t-serv').addEventListener('change',e=>{
-    if(editT) return;                       // no pisar lo que ya ajusto
+    if(editT) return;
     const s=servicios().find(x=>x.n===e.target.value); if(!s) return;
-    $('#t-dias').value=s.d;
-    if(s.p) $('#t-pres').value=s.p;
+    if(!diasTocados) $('#t-dias').value = s.d;
+    if(!presTocado && s.p) $('#t-pres').value = s.p;
   });
   $('#t-ok').addEventListener('click',guardarTrabajo);
   const del=$('#t-del'); if(del) del.addEventListener('click',()=>{
@@ -2082,7 +2106,8 @@ function diaEnPista(pista, clientX){
 }
 
 function montarArrastre(el){
-  let t0=null, x0=0, y0=0, origen=null, moviendo=false, modo='mover', anchoDia=0, base=null;
+  let t0=null, x0=0, y0=0, origen=null, moviendo=false, modo='mover',
+      anchoDia=0, altoFila=0, base=null;
 
   el.addEventListener('pointerdown', ev=>{
     if(ev.button !== undefined && ev.button !== 0) return;
@@ -2095,6 +2120,7 @@ function montarArrastre(el){
     x0=ev.clientX; y0=ev.clientY;
     origen = diaEnPista(pista, ev.clientX);
     anchoDia = pista.getBoundingClientRect().width / 7;
+    altoFila = (el.closest('.rej-fila')||pista).getBoundingClientRect().height;
     base = {left: el.offsetLeft, width: el.offsetWidth};
     moviendo=false;
     el.setPointerCapture(ev.pointerId);
@@ -2103,14 +2129,20 @@ function montarArrastre(el){
   el.addEventListener('pointermove', ev=>{
     if(!t0) return;
     const dx=ev.clientX-x0, dy=ev.clientY-y0;
-    if(!moviendo && Math.abs(dx)+Math.abs(dy) < 6) return;   // todavía es un toque
+    // Umbral alto: en una tablet el dedo nunca está quieto del todo.
+    if(!moviendo && Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
     moviendo=true;
     ev.preventDefault();
     el.classList.add('arrastrando');
+
+    /* La vista previa se pega a la rejilla: salta de día en día en vez de
+       seguir al píxel. Así se ve exactamente dónde va a caer y no da la
+       sensación de que se mueve solo. */
     if(modo==='mover'){
-      el.style.transform = `translate(${dx}px, ${dy}px)`;
+      const saltoX = Math.round(dx/anchoDia)*anchoDia;
+      const saltoY = Math.round(dy/altoFila)*altoFila;
+      el.style.transform = `translate(${saltoX}px, ${saltoY}px)`;
     }else{
-      // Vista previa del estirado, pegada a los días completos
       const salto = Math.round(dx/anchoDia)*anchoDia;
       if(modo==='der'){
         el.style.width = Math.max(anchoDia-6, base.width+salto)+'px';
@@ -2151,15 +2183,17 @@ function montarArrastre(el){
       pintar(); return;
     }
 
-    // ¿sobre qué plaza y qué día se ha soltado?
+    /* El día destino se calcula por el desplazamiento redondeado, no por
+       dónde quedó el dedo: el dedo tapa la barra y siempre cae un poco
+       corrido. Así soltar en mitad de una casilla no cambia el resultado. */
+    const salto = Math.round((ev.clientX - x0)/anchoDia);
+
     el.style.pointerEvents='none';
     const bajo = document.elementFromPoint(ev.clientX, ev.clientY);
     el.style.pointerEvents='';
     const pista = bajo && bajo.closest ? bajo.closest('.rej-pista') : null;
     if(!pista) { pintar(); return; }
 
-    const hasta = diaEnPista(pista, ev.clientX);
-    const salto = diasEntre(desdeDia, hasta);
     const nuevaPlaza = +pista.dataset.plaza;
     if(salto===0 && nuevaPlaza===trabajo.plaza) return;      // no se movió
 
@@ -2762,6 +2796,9 @@ function pintar(){
   }));
   c.querySelectorAll('[data-lista]').forEach(b=>b.addEventListener('click',()=>{
     listaSel=b.dataset.lista; pintar();
+  }));
+  c.querySelectorAll('[data-mes-rueda]').forEach(b=>b.addEventListener('click',()=>{
+    mesRueda=+b.dataset.mesRueda; pintar();
   }));
   c.querySelectorAll('[data-rmes]').forEach(b=>b.addEventListener('click',()=>{
     const ms=[...new Set(D.cobros.concat(D.gastos)
