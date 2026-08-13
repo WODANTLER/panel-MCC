@@ -504,6 +504,83 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .acceso-err{margin-top:14px;padding:10px 12px;background:var(--alerta-suave);
   border-left:3px solid var(--alerta);color:#6B2318;font-size:13px;text-align:left}
 .acceso-err[hidden]{display:none}
+/* ── factura ─────────────────────────────────────────────────────────
+   Medidas en milímetros para que la pantalla y el papel coincidan. */
+.hoja-c.ancho{max-width:820px}
+.fac-acciones{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.fac-prev{background:#f4f4f2;padding:14px;overflow-x:auto}
+.fac{width:182mm;background:#fff;padding:0;margin:0 auto;
+  font-family:var(--sans);color:#14141A;font-size:10.5pt;line-height:1.45}
+.fac-top{display:flex;justify-content:space-between;align-items:flex-start;
+  gap:16px;padding-bottom:14px;border-bottom:2px solid #14141A}
+.fac-marca{display:flex;gap:12px;align-items:flex-start}
+.fac-logo{width:52px;height:52px;flex:none}
+.fac-emisor{display:flex;flex-direction:column;line-height:1.4}
+.fac-emisor b{font-family:var(--display);font-variation-settings:'wdth' 82,'wght' 700;
+  font-size:12pt;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}
+.fac-emisor span{font-size:8pt;color:#55555e}
+.fac-meta{text-align:right}
+.fac-meta h1{font-family:var(--display);font-variation-settings:'wdth' 78,'wght' 700;
+  font-size:22pt;letter-spacing:.06em;text-transform:uppercase;margin:0 0 2px}
+.fac-num{font-family:var(--mono);font-size:11pt;font-weight:600}
+.fac-fecha{font-family:var(--mono);font-size:9pt;color:#55555e;margin-bottom:8px}
+.fac-contacto{display:flex;flex-direction:column;font-size:8pt;color:#55555e}
+
+.fac-partes{display:grid;grid-template-columns:1fr auto;gap:24px;
+  padding:16px 0;border-bottom:1px solid #d8d8d2}
+.fac-parte h2{font-family:var(--mono);font-size:7.5pt;letter-spacing:.14em;
+  text-transform:uppercase;color:#8a8a92;margin:0 0 5px;font-weight:400}
+.fac-parte b{display:block;font-size:11pt;font-weight:600;margin-bottom:2px}
+.fac-parte span{display:block;font-size:9pt;color:#55555e}
+.fac-veh{text-align:right}
+
+.fac-tabla{width:100%;border-collapse:collapse;margin-top:16px}
+.fac-tabla th{font-family:var(--mono);font-size:7.5pt;letter-spacing:.12em;
+  text-transform:uppercase;color:#8a8a92;font-weight:400;text-align:left;
+  padding:8px 10px;border-bottom:1px solid #14141A}
+.fac-tabla td{padding:9px 10px;border-bottom:1px solid #ececE6;font-size:10pt}
+.fac-tabla .c{text-align:center;width:22mm}
+.fac-tabla .d{text-align:right;width:28mm;font-family:var(--mono)}
+.fac-tabla tr.vac td{height:26px;border-bottom:1px solid #f2f2ee}
+
+.fac-tot{margin:14px 0 0;margin-left:auto;width:74mm}
+.fac-tot .lin{display:flex;justify-content:space-between;gap:16px;
+  padding:5px 0;font-size:10pt;color:#55555e}
+.fac-tot .lin b{font-family:var(--mono);color:#14141A}
+.fac-tot .fin{border-top:2px solid #14141A;margin-top:4px;padding-top:8px;
+  font-size:12pt;color:#14141A;font-weight:600}
+.fac-tot .fin b{font-size:13pt;font-weight:700}
+
+.fac-aviso{margin:0 0 12px;padding:9px 13px;background:var(--alerta-suave);
+  border-left:3px solid var(--alerta);font-size:13px;color:#6B2318}
+.fac-anulada td{opacity:.45;text-decoration:line-through}
+.fac-anulada td:first-child{text-decoration:none}
+.fac-rect{margin:10px 0 0;padding:7px 11px;background:#f6f6f2;
+  border-left:3px solid #8F6A2A;font-size:9pt;color:#4a4a52}
+.fac-nota-ue{margin:16px 0 0;padding:9px 12px;background:#f6f6f2;
+  border-left:3px solid #8F6A2A;font-size:8.5pt;color:#4a4a52}
+.fac-pie{margin-top:22px;padding-top:14px;border-top:1px solid #d8d8d2}
+.fac-pago h2{font-family:var(--mono);font-size:7.5pt;letter-spacing:.14em;
+  text-transform:uppercase;color:#8a8a92;margin:0 0 5px;font-weight:400}
+.fac-pago p{margin:0 0 6px;font-size:8.5pt;color:#55555e;line-height:1.5}
+.fac-iban{font-family:var(--mono);font-size:8.5pt;color:#14141A!important}
+.fac-gracias{margin:14px 0 0;text-align:center;font-size:9pt;
+  font-style:italic;color:#8a8a92}
+
+.lin-fac{display:grid;grid-template-columns:1fr 58px 84px 30px;gap:6px;
+  align-items:center;margin-bottom:6px}
+.lin-fac input{background:#fff;border:1px solid var(--linea2);color:var(--tinta);
+  font-family:var(--sans);font-size:14px;padding:8px 9px;width:100%}
+.lin-fac input:focus{outline:0;border-color:var(--oro);box-shadow:0 0 0 3px var(--oro-suave)}
+
+@media print{
+  body>*{display:none!important}
+  .fac{display:block!important;width:auto}
+}
+
+.sep-fis{margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--linea);
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dim)}
 .acceso-err .cod{display:inline-block;margin-top:6px;font-family:var(--mono);
   font-size:10.5px;color:#8B4A3A;letter-spacing:.03em}
 .acc-avisar{display:block;margin-top:7px;padding:6px 9px;background:var(--alerta-suave);
@@ -598,6 +675,7 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
       <button class="tab" role="tab" aria-selected="false" data-v="clientes">Clientes</button>
       <button class="tab" role="tab" aria-selected="false" data-v="registro">Registro</button>
       <button class="tab" role="tab" aria-selected="false" data-v="impuestos">Impuestos</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="facturas">Facturación</button>
       <button class="tab" role="tab" aria-selected="false" data-v="ajustes">Ajustes</button>
     </nav>
   </div>
@@ -911,7 +989,7 @@ const fs   = firebase.firestore();
 /* Cada movimiento es un documento suelto dentro de su colección. Ninguno
    crece con el tiempo: crece el número de documentos, que es lo que
    Firestore hace bien. Es lo contrario del error de acumular todo en uno. */
-const COLECCIONES = ['trabajos','cobros','gastos','clientes','fijos','plazas','servicios'];
+const COLECCIONES = ['trabajos','cobros','gastos','clientes','fijos','plazas','servicios','facturas'];
 const DOC_FISCAL = () => fs.collection('config').doc('fiscal');
 
 let persiste = true;
@@ -1017,7 +1095,7 @@ function pintarAvisoMemoria(){
 }
 
 /* ─── datos ────────────────────────────────────────────────────────── */
-let D = {trabajos:[], cobros:[], gastos:[], fijos:[], clientes:[], plazas:[], servicios:[], fiscal:null};
+let D = {trabajos:[], cobros:[], gastos:[], fijos:[], clientes:[], plazas:[], servicios:[], facturas:[], fiscal:null};
 let sig = 1;
 const nid = () => 'x'+(sig++)+'-'+Math.random().toString(36).slice(2,7);
 
@@ -1029,7 +1107,7 @@ function semilla(){
   D.fiscal    = {...FISCAL_INI};
   D.plazas    = PLAZAS_INI.map(p=>({...p}));
   D.servicios = SERVICIOS_INI.map(x=>({...x, id:nid()})).sort(ordenServicios);
-  D.trabajos = []; D.cobros = []; D.gastos = []; D.clientes = []; D.fijos = [];
+  D.trabajos = []; D.cobros = []; D.gastos = []; D.clientes = []; D.fijos = []; D.facturas = [];
 }
 
 
@@ -1519,6 +1597,301 @@ function vistaDinero(){
   return h;
 }
 
+/* ─── vista de facturación ─────────────────────────────────────────── */
+function vistaFacturas(){
+  const as = [...new Set(facturas().map(f=>aFecha(f.fecha).getFullYear()))].sort((a,b)=>b-a);
+  if(!as.length) as.push(hoy.getFullYear());
+  if(anioSel===null || !as.includes(anioSel)) anioSel = as[0];
+
+  const delAnio = facturas().filter(f=>aFecha(f.fecha).getFullYear()===anioSel)
+                            .sort((a,b)=>(+b.numero||0)-(+a.numero||0));
+  const base = delAnio.reduce((a,f)=>a+totalesFactura(f).base, 0);
+  const iva  = delAnio.reduce((a,f)=>a+totalesFactura(f).iva, 0);
+
+  let h = `<div class="selanio">
+      <span class="selanio-et">Año</span>
+      ${as.map(a=>`<button class="anio-btn${a===anioSel?' on':''}" data-anio="${a}">${a}</button>`).join('')}
+    </div>
+
+    <div class="kpis">
+      <div class="kpi destaca"><span class="et">Facturado ${anioSel}</span>
+        <div class="n">${eur(base)}<small>€</small></div>
+        <div class="sub">base, sin IVA</div></div>
+      <div class="kpi"><span class="et">IVA repercutido</span>
+        <div class="n">${eur(iva)}<small>€</small></div>
+        <div class="sub">a ingresar a Hacienda</div></div>
+      <div class="kpi"><span class="et">Facturas</span>
+        <div class="n">${delAnio.length}</div>
+        <div class="sub">emitidas en ${anioSel}</div></div>
+      <div class="kpi"><span class="et">Siguiente número</span>
+        <div class="n">${proximoNumero()}</div>
+        <div class="sub">correlativo, sin huecos</div></div>
+    </div>
+
+    <div class="cab"><h2>Facturas emitidas</h2>
+      <span class="nota">toca una para verla, imprimirla o editarla</span></div>
+    <div class="anio">
+      <button class="btn mini pri" data-acc="factura">+ Nueva factura</button>
+      <input class="buscar" id="q-fac" placeholder="Buscar por cliente, vehículo o número…" autocomplete="off">
+    </div>`;
+
+  if(!delAnio.length) return h + `<div class="vacio" style="border:1px solid var(--linea)">
+    Todavía no hay facturas en ${anioSel}. La primera saldrá con el número ${proximoNumero()}.</div>`;
+
+  h += `<table class="tabla" id="tb-fac"><thead><tr>
+      <th>Nº</th><th>Fecha</th><th>Cliente</th><th>Vehículo</th>
+      <th style="text-align:right">Base</th>
+      <th style="text-align:right">IVA</th>
+      <th style="text-align:right">Total</th>
+    </tr></thead><tbody>`
+    + delAnio.map(f=>{
+        const t=totalesFactura(f);
+        const q=[f.numero,f.cliente,f.vehiculo].filter(Boolean).join(' ').toLowerCase();
+        const anul = facturas().find(x=>+x.rectificaA===+f.numero);
+        return `<tr data-fac="${f.id}" data-q="${esc(q)}" style="cursor:pointer"
+          class="${anul?'fac-anulada':''}">
+          <td><b>${esc(f.numero)}</b>${
+            f.rectificaA?` <span class="pill">abono de ${esc(f.rectificaA)}</span>`:''}${
+            anul?` <span class="pill sinf">anulada</span>`:''}</td>
+          <td class="num" style="color:var(--dim)">${fCorta(aFecha(f.fecha))}</td>
+          <td>${esc(f.cliente||'—')}</td>
+          <td style="color:var(--dim)">${esc(f.vehiculo||'—')}</td>
+          <td class="num">${eur(t.base)} €</td>
+          <td class="num" style="color:var(--dim)">${t.tipo?`${eur(t.iva)} €`:'exenta'}</td>
+          <td class="num"><b>${eur(t.total)} €</b></td></tr>`;
+      }).join('')
+    + `</tbody></table>`;
+
+  return h;
+}
+
+/* ─── editor de factura ────────────────────────────────────────────── */
+let editF2=null, lineasF=[];
+
+function abrirFactura(id){
+  editF2 = id ? facturas().find(f=>f.id===id) : null;
+  const f = editF2 || {
+    numero: proximoNumero(), fecha: aIso(hoy),
+    cliente:'', clienteNif:'', clienteDir:'', clienteCiudad:'', clienteCp:'',
+    vehiculo:'', matricula:'', intraUE:false, lineas:[], condiciones:''
+  };
+  lineasF = (f.lineas||[]).map(l=>({...l}));
+  if(!lineasF.length) lineasF.push({desc:'', cantidad:1, precio:0});
+
+  const nombres = [...new Set(D.clientes.map(c=>c.nombre)
+    .concat(D.trabajos.map(t=>t.cliente)))].filter(Boolean).sort();
+  const coches = [...new Set(D.clientes.flatMap(c=>(c.vehiculos||[]).map(v=>v.modelo))
+    .concat(D.trabajos.map(t=>t.coche)))].filter(Boolean).sort();
+
+  $('#hojaC').innerHTML = `<h3>${editF2?'Editar factura':'Nueva factura'}</h3>
+    <div class="fila2">
+      <div class="campo"><label for="f-num">Número</label>
+        <input type="number" id="f-num" value="${f.numero}" inputmode="numeric"></div>
+      <div class="campo"><label for="f-fec">Fecha</label>
+        <input type="date" id="f-fec" value="${f.fecha}"></div></div>
+
+    <div class="campo"><label for="f-cli">Cliente</label>
+      <input id="f-cli" list="lista-fcli" value="${esc(f.cliente)}" placeholder="Nombre o empresa" autocomplete="off">
+      <datalist id="lista-fcli">${nombres.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
+    <div class="fila2">
+      <div class="campo"><label for="f-nif">NIF / CIF</label>
+        <input id="f-nif" value="${esc(f.clienteNif)}" placeholder="B-12345678" autocomplete="off"></div>
+      <div class="campo"><label for="f-cp">CP</label>
+        <input id="f-cp" value="${esc(f.clienteCp)}" placeholder="29660" autocomplete="off"></div></div>
+    <div class="campo"><label for="f-dir">Dirección</label>
+      <input id="f-dir" value="${esc(f.clienteDir)}" placeholder="Avda. Calderón Barca s/n" autocomplete="off"></div>
+    <div class="fila2">
+      <div class="campo"><label for="f-ciu">Ciudad</label>
+        <input id="f-ciu" value="${esc(f.clienteCiudad)}" placeholder="Marbella, Málaga" autocomplete="off"></div>
+      <div class="campo"><label for="f-ue">IVA</label>
+        <select id="f-ue">
+          <option value="0"${!f.intraUE?' selected':''}>${fiscal().iva} % normal</option>
+          <option value="1"${f.intraUE?' selected':''}>0 % · empresa UE</option>
+        </select></div></div>
+
+    <div class="fila2">
+      <div class="campo"><label for="f-veh">Vehículo</label>
+        <input id="f-veh" list="lista-fveh" value="${esc(f.vehiculo)}" placeholder="Ferrari Purosangue" autocomplete="off">
+        <datalist id="lista-fveh">${coches.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
+      <div class="campo"><label for="f-mat">Matrícula</label>
+        <input id="f-mat" value="${esc(f.matricula)}" placeholder="opcional" autocomplete="off"></div></div>
+
+    <div class="cobros" id="f-lineas"></div>
+
+    <div class="acc">
+      <button class="btn" type="button" data-cerrar>Cancelar</button>
+      <button class="btn pri" type="button" id="f-ok">Guardar y ver</button>
+    </div>`;
+  $('#hoja').classList.add('on');
+  $('#f-cli').focus();
+
+  /* Al escribir el cliente se rellenan sus datos fiscales si ya están
+     en su ficha: evita teclear el NIF cada vez. */
+  $('#f-cli').addEventListener('change',()=>{
+    const n = normNom($('#f-cli').value);
+    const c = D.clientes.find(x=>normNom(x.nombre)===n);
+    if(!c) return;
+    if(c.nif) $('#f-nif').value = c.nif;
+    if(c.direccion) $('#f-dir').value = c.direccion;
+    if(c.ciudad) $('#f-ciu').value = c.ciudad;
+    if(c.cp) $('#f-cp').value = c.cp;
+    if(c.intraUE) $('#f-ue').value = '1';
+  });
+
+  function pintarLineas(){
+    const cont=$('#f-lineas'); if(!cont) return;
+    const base = lineasF.reduce((a,l)=>a+(l.cantidad||1)*(l.precio||0),0);
+    const tipo = $('#f-ue').value==='1' ? 0 : fiscal().iva;
+    cont.innerHTML = `<label style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;
+        text-transform:uppercase;color:var(--dim)">Conceptos</label>`
+      + lineasF.map((l,i)=>`<div class="lin-fac">
+          <input class="l-desc" data-i="${i}" value="${esc(l.desc)}" placeholder="Instalación de PPF full body" autocomplete="off">
+          <input class="l-cant" data-i="${i}" type="number" min="1" value="${l.cantidad||1}" inputmode="numeric">
+          <input class="l-prec" data-i="${i}" type="number" step="0.01" value="${l.precio||''}" placeholder="Precio" inputmode="decimal">
+          <button class="x" data-ql="${i}" aria-label="Quitar línea">×</button>
+        </div>`).join('')
+      + `<button class="btn mini" id="l-add" type="button" style="margin-top:8px">+ Concepto</button>
+         <div class="desglose" style="margin-top:12px">
+           <span>Base <b>${eur(base)} €</b></span>
+           <span>IVA ${tipo} % <b>${eur(base*tipo/100)} €</b></span>
+           <span class="tot">Total <b>${eur(base*(1+tipo/100))} €</b></span>
+         </div>`;
+
+    cont.querySelectorAll('.l-desc').forEach(el=>el.addEventListener('input',e=>{
+      lineasF[+e.target.dataset.i].desc = e.target.value; }));
+    cont.querySelectorAll('.l-cant').forEach(el=>el.addEventListener('input',e=>{
+      lineasF[+e.target.dataset.i].cantidad = Math.max(1, +e.target.value||1); pintarTotales(); }));
+    cont.querySelectorAll('.l-prec').forEach(el=>el.addEventListener('input',e=>{
+      lineasF[+e.target.dataset.i].precio = numero(e.target.value); pintarTotales(); }));
+    cont.querySelectorAll('[data-ql]').forEach(b=>b.addEventListener('click',()=>{
+      lineasF.splice(+b.dataset.ql,1);
+      if(!lineasF.length) lineasF.push({desc:'',cantidad:1,precio:0});
+      pintarLineas(); }));
+    $('#l-add').addEventListener('click',()=>{
+      lineasF.push({desc:'',cantidad:1,precio:0}); pintarLineas(); });
+  }
+  /* Solo se refresca el resumen, no toda la lista: si se repinta entero
+     mientras se escribe, el cursor salta al principio del campo. */
+  function pintarTotales(){
+    const base = lineasF.reduce((a,l)=>a+(l.cantidad||1)*(l.precio||0),0);
+    const tipo = $('#f-ue').value==='1' ? 0 : fiscal().iva;
+    const d = $('#f-lineas').querySelector('.desglose');
+    if(d) d.innerHTML = `<span>Base <b>${eur(base)} €</b></span>
+      <span>IVA ${tipo} % <b>${eur(base*tipo/100)} €</b></span>
+      <span class="tot">Total <b>${eur(base*(1+tipo/100))} €</b></span>`;
+  }
+  pintarLineas();
+  $('#f-ue').addEventListener('change',pintarTotales);
+
+  $('#f-ok').addEventListener('click',()=>{
+    const num = +$('#f-num').value || proximoNumero();
+    const repe = facturas().find(x=>+x.numero===num && x.id!==(editF2&&editF2.id));
+    if(repe && !confirm(`Ya existe la factura ${num}. ¿Seguir igualmente?`)) return;
+    const d = {
+      numero: num, fecha: $('#f-fec').value || aIso(hoy),
+      cliente: $('#f-cli').value.trim(), clienteNif: $('#f-nif').value.trim(),
+      clienteDir: $('#f-dir').value.trim(), clienteCiudad: $('#f-ciu').value.trim(),
+      clienteCp: $('#f-cp').value.trim(), intraUE: $('#f-ue').value==='1',
+      vehiculo: $('#f-veh').value.trim(), matricula: $('#f-mat').value.trim(),
+      lineas: lineasF.filter(l=>(l.desc||'').trim() || l.precio)
+    };
+    if(!d.lineas.length){ alert('Añade al menos un concepto.'); return; }
+    let destino;
+    if(editF2){ Object.assign(editF2, d); destino = editF2; }
+    else { destino = Object.assign({id:nid()}, d); D.facturas.push(destino); }
+    cerrar(); guardar(); pintar();
+    verFactura(destino.id);
+  });
+
+
+}
+
+/* Rectificar = emitir una factura de abono: los mismos conceptos en
+   negativo, con número propio. Las dos quedan y se anulan entre sí, así
+   la numeración no tiene huecos y se ve qué pasó. */
+function rectificarFactura(id){
+  const f = facturas().find(x=>x.id===id); if(!f) return;
+  if(f.rectificaA){ alert('Esta ya es una factura de abono.'); return; }
+  const ya = facturas().find(x=>+x.rectificaA===+f.numero);
+  if(ya){ alert(`La factura ${f.numero} ya está rectificada por la ${ya.numero}.`); return; }
+
+  const t = totalesFactura(f);
+  if(!confirm(`Se va a emitir la factura ${proximoNumero()} por −${eur(t.total)} €`
+    + ` para anular la ${f.numero}.\n\nLas dos quedan guardadas. ¿Seguir?`)) return;
+
+  const abono = {
+    id: nid(), numero: proximoNumero(), fecha: aIso(hoy),
+    rectificaA: f.numero,
+    cliente:f.cliente, clienteNif:f.clienteNif, clienteDir:f.clienteDir,
+    clienteCiudad:f.clienteCiudad, clienteCp:f.clienteCp,
+    vehiculo:f.vehiculo, matricula:f.matricula, intraUE:f.intraUE,
+    lineas:(f.lineas||[]).map(l=>({...l, precio: -(l.precio||0)})),
+    condiciones:`Rectifica la factura ${f.numero}.`
+  };
+  D.facturas.push(abono);
+  guardar(); cerrarFac(); pintar();
+  verFactura(abono.id);
+}
+
+/* Solo se puede borrar la última: ahí no queda hueco y el número se
+   reutiliza. Las anteriores se corrigen rectificando. */
+const esUltima = f => +f.numero === Math.max(...facturas().map(x=>+x.numero||0));
+
+/* ─── vista previa, impresión y PDF ────────────────────────────────── */
+function verFactura(id){
+  const f = facturas().find(x=>x.id===id); if(!f) return;
+  const anulada = facturas().find(x=>+x.rectificaA===+f.numero);
+  $('#hojaC').innerHTML = `<div class="fac-acciones">
+      <button class="btn mini" data-cerrar>Cerrar</button>
+      <button class="btn mini" id="fac-edit">Editar</button>
+      ${!f.rectificaA && !anulada ? `<button class="btn mini" id="fac-rect">Rectificar</button>`:''}
+      ${esUltima(f) ? `<button class="btn mini borrar" id="fac-del">Eliminar</button>`:''}
+      <button class="btn mini" id="fac-pdf">Descargar PDF</button>
+      <button class="btn pri mini" id="fac-imp">Imprimir</button>
+    </div>
+    ${anulada?`<div class="fac-aviso">Anulada por la factura ${esc(anulada.numero)}.</div>`:''}
+    ${f.rectificaA?`<div class="fac-aviso">Factura de abono: rectifica la ${esc(f.rectificaA)}.</div>`:''}
+    <div class="fac-prev">${htmlFactura(f)}</div>`;
+  $('#hoja').classList.add('on');
+  $('#hojaC').classList.add('ancho');
+
+  $('#fac-edit').addEventListener('click',()=>{ cerrarFac(); abrirFactura(id); });
+  const rect=$('#fac-rect'); if(rect) rect.addEventListener('click',()=>rectificarFactura(id));
+  const bor=$('#fac-del'); if(bor) bor.addEventListener('click',()=>{
+    if(!confirm(`¿Eliminar la factura ${f.numero}?\n\nEs la última emitida, así que el número`
+      + ` volverá a estar libre. Solo hazlo si no la has entregado a nadie.`)) return;
+    borrarDoc('facturas', f.id);
+    D.facturas = D.facturas.filter(x=>x.id!==f.id);
+    cerrarFac(); guardar(); pintar();
+  });
+  $('#fac-imp').addEventListener('click',()=>imprimirFactura(f, false));
+  $('#fac-pdf').addEventListener('click',()=>imprimirFactura(f, true));
+}
+function cerrarFac(){ $('#hojaC').classList.remove('ancho'); cerrar(); }
+
+/* Se abre una ventana con la factura sola y se lanza el diálogo del
+   sistema. Desde ahí se imprime o se elige "Guardar como PDF", que es
+   como se genera el PDF sin depender de ninguna librería externa. */
+function imprimirFactura(f, comoPdf){
+  const css = [...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
+  const w = window.open('', '_blank');
+  if(!w){ alert('El navegador ha bloqueado la ventana. Permite las ventanas emergentes para poder imprimir.'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <title>Factura ${esc(f.numero)} · ${esc(f.cliente||'')}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>${css}
+      body{background:#fff;padding:0;margin:0}
+      .fac{margin:0 auto}
+      @page{size:A4;margin:14mm}
+    </style></head><body>${htmlFactura(f)}</body></html>`);
+  w.document.close();
+  // Se espera a que carguen las fuentes: si no, imprime con la tipografía
+  // del sistema y el resultado no se parece a la vista previa.
+  const lanzar = () => { w.focus(); w.print(); };
+  if(w.document.fonts && w.document.fonts.ready) w.document.fonts.ready.then(()=>setTimeout(lanzar,120));
+  else setTimeout(lanzar, 600);
+}
+
 /* ─── impuestos ────────────────────────────────────────────────────────
    El IVA y el IRPF se liquidan por trimestres, no por meses. Tenerlos en
    su propia pestaña evita mezclar la caja del día a día con lo que hay
@@ -1639,6 +2012,122 @@ function vistaImpuestos(){
   return h;
 }
 
+/* ─── facturación ──────────────────────────────────────────────────────
+   La numeración tiene que ser correlativa y sin huecos. Se guarda en cada
+   factura y el siguiente número sale del mayor emitido, nunca del total
+   de documentos: si se borra una, el contador no debe retroceder.      */
+const EMISOR = {
+  nombre:'Marbella Custom Cars', titular:'Joaquín Sánchez',
+  nif:'ESY9866350P', direccion:'Calle Oro 32, Polígono Industrial La Ermita',
+  ciudad:'Marbella, Málaga', cp:'29603', tel:'+34 672 93 63 98',
+  email:'marbellacustomcars@gmail.com', web:'www.marbellacustomcars.com',
+  instagram:'@marbellacustomcars', iban:'ES85 2100 3889 1702 0030 1309',
+  banco:'CaixaBank'
+};
+
+const facturas = () => D.facturas || [];
+const proximoNumero = () =>
+  Math.max(36, ...facturas().map(f=>+f.numero||0)) + 1;   // sigue desde la 37
+
+/** Totales de una factura. La base es la suma de líneas; el IVA va encima. */
+function totalesFactura(f){
+  const base = (f.lineas||[]).reduce((a,l)=>a+(l.cantidad||1)*(l.precio||0), 0);
+  const tipo = f.intraUE ? 0 : (f.iva != null ? f.iva : fiscal().iva);
+  const iva  = base * tipo/100;
+  return {base, tipo, iva, total: base + iva};
+}
+
+const fLarga = d => aFecha(d).toLocaleDateString('es-ES',
+  {day:'2-digit', month:'2-digit', year:'numeric'});
+
+/* HTML de la factura. El mismo marcado sirve para la vista previa, para
+   imprimir y para el PDF: así lo que se ve es exactamente lo que sale. */
+function htmlFactura(f){
+  const t = totalesFactura(f);
+  const ls = (f.lineas||[]).filter(l=>(l.desc||'').trim() || l.precio);
+  const vacias = Math.max(0, 4 - ls.length);
+
+  return `<article class="fac">
+    <header class="fac-top">
+      <div class="fac-marca">
+        <svg viewBox="0 0 1492 1492" class="fac-logo" aria-hidden="true">
+          <circle cx="746" cy="746" r="746" fill="#14141A"/>
+          <g transform="translate(311.87 233.84) scale(1.0003)"><path fill="#fff" fill-rule="evenodd" d="M 430.00 1022.98 L 430.00 1021.95 L 337.99 929.98 L 245.99 838.00 L 246.01 716.46 L 246.03 594.93 L 247.71 594.28 L 249.38 593.64 L 249.79 594.86 L 250.19 596.08 L 341.20 687.04 L 432.20 778.00 L 434.01 778.00 L 435.81 778.00 L 650.87 563.00 L 865.93 348.00 L 866.97 348.00 L 868.00 348.00 L 868.00 594.00 L 868.00 840.00 L 867.12 840.00 L 866.24 840.00 L 781.12 925.12 L 696.00 1010.23 L 696.00 1011.12 L 696.00 1012.00 L 694.00 1012.00 L 692.00 1012.00 L 692.00 891.00 L 692.00 770.00 L 691.01 770.00 L 690.02 770.00 L 564.01 895.98 L 438.00 1021.96 L 438.00 1022.98 L 438.00 1024.00 L 434.00 1024.00 L 430.00 1024.00 L 430.00 1022.98 Z M 172.00 1011.11 L 172.00 1010.23 L 88.00 926.24 L 4.00 842.25 L 4.00 839.69 L 4.00 837.13 L 2.00 836.50 L 0.00 835.87 L 0.00 417.93 L 0.00 0.00 L 2.00 0.00 L 4.00 0.00 L 4.00 1.02 L 4.00 2.04 L 218.03 216.02 L 432.06 430.00 L 434.00 430.00 L 435.94 430.00 L 649.97 216.02 L 864.00 2.04 L 864.00 1.02 L 864.00 0.00 L 866.00 0.00 L 868.00 0.00 L 868.00 123.00 L 868.00 246.00 L 867.09 246.00 L 866.19 246.00 L 651.13 461.00 L 436.07 676.00 L 434.00 676.00 L 431.94 676.00 L 304.89 549.00 L 177.85 422.00 L 176.93 422.00 L 176.00 422.00 L 176.00 717.00 L 176.00 1012.00 L 174.00 1012.00 L 172.00 1012.00 L 172.00 1011.11 Z"/></g>
+        </svg>
+        <div class="fac-emisor">
+          <b>${esc(EMISOR.nombre)}</b>
+          <span>${esc(EMISOR.titular)}</span>
+          <span>NIF: ${esc(EMISOR.nif)}</span>
+          <span>${esc(EMISOR.direccion)}</span>
+          <span>${esc(EMISOR.ciudad)} · CP ${esc(EMISOR.cp)}</span>
+          <span>Tel. ${esc(EMISOR.tel)}</span>
+        </div>
+      </div>
+      <div class="fac-meta">
+        <h1>${f.rectificaA?'Abono':'Factura'}</h1>
+        <div class="fac-num">Nº ${esc(f.numero)}</div>
+        <div class="fac-fecha">${fLarga(f.fecha)}</div>
+        <div class="fac-contacto">
+          <span>${esc(EMISOR.email)}</span>
+          <span>${esc(EMISOR.web)}</span>
+          <span>${esc(EMISOR.instagram)}</span>
+        </div>
+      </div>
+    </header>
+
+    ${f.rectificaA?`<p class="fac-rect">Factura rectificativa de la nº ${esc(f.rectificaA)}</p>`:''}
+    <section class="fac-partes">
+      <div class="fac-parte">
+        <h2>Facturar a</h2>
+        <b>${esc(f.cliente||'—')}</b>
+        ${f.clienteNif?`<span>NIF: ${esc(f.clienteNif)}</span>`:''}
+        ${f.clienteDir?`<span>${esc(f.clienteDir)}</span>`:''}
+        ${f.clienteCiudad||f.clienteCp?`<span>${esc([f.clienteCiudad,f.clienteCp].filter(Boolean).join(' · '))}</span>`:''}
+      </div>
+      <div class="fac-parte fac-veh">
+        <h2>Vehículo</h2>
+        <b>${esc(f.vehiculo||'—')}</b>
+        ${f.matricula?`<span>Matrícula: ${esc(f.matricula)}</span>`:''}
+      </div>
+    </section>
+
+    <table class="fac-tabla">
+      <thead><tr>
+        <th>Descripción</th>
+        <th class="c">Cantidad</th>
+        <th class="d">Precio</th>
+        <th class="d">Importe</th>
+      </tr></thead>
+      <tbody>
+        ${ls.map(l=>`<tr>
+          <td>${esc(l.desc)}</td>
+          <td class="c">${l.cantidad||1}</td>
+          <td class="d">${eur(l.precio)} €</td>
+          <td class="d">${eur((l.cantidad||1)*(l.precio||0))} €</td></tr>`).join('')}
+        ${Array.from({length:vacias}).map(()=>'<tr class="vac"><td colspan="4">&nbsp;</td></tr>').join('')}
+      </tbody>
+    </table>
+
+    <div class="fac-tot">
+      <div class="lin"><span>Base imponible</span><b>${eur(t.base)} €</b></div>
+      <div class="lin"><span>IVA ${t.tipo} %</span><b>${eur(t.iva)} €</b></div>
+      <div class="lin fin"><span>Total</span><b>${eur(t.total)} €</b></div>
+    </div>
+
+    ${f.intraUE?`<p class="fac-nota-ue">Operación exenta de IVA. Inversión del sujeto pasivo
+      conforme al artículo 196 de la Directiva 2006/112/CE.</p>`:''}
+
+    <footer class="fac-pie">
+      <div class="fac-pago">
+        <h2>Forma de pago</h2>
+        <p>${esc(f.condiciones || 'Deberá abonarse el 50 % del total de forma anticipada para confirmar el proyecto y el saldo restante al finalizar el mismo.')}</p>
+        <p class="fac-iban">${esc(EMISOR.banco)} · IBAN ${esc(EMISOR.iban)}</p>
+      </div>
+      <p class="fac-gracias">Gracias por su confianza</p>
+    </footer>
+  </article>`;
+}
+
 /* ─── clientes ─────────────────────────────────────────────────────── */
 const normNom = s => String(s||'').trim().toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
@@ -1757,6 +2246,25 @@ function abrirCliente(id, nombre){
     <div class="cobros" id="cl-coches"></div>
     <div class="campo"><label for="cl-not">Notas</label>
       <input id="cl-not" value="${esc(c.notas)}" placeholder="Paga en efectivo. Le interesa el PPF." autocomplete="off"></div>
+
+    <div class="sep-fis">Datos para facturar</div>
+    <div class="fila2">
+      <div class="campo"><label for="cl-nif">NIF / CIF</label>
+        <input id="cl-nif" value="${esc(c.nif||'')}" placeholder="B-12345678" autocomplete="off"></div>
+      <div class="campo"><label for="cl-cp">Código postal</label>
+        <input id="cl-cp" value="${esc(c.cp||'')}" placeholder="29660" autocomplete="off"></div>
+    </div>
+    <div class="campo"><label for="cl-dir">Dirección</label>
+      <input id="cl-dir" value="${esc(c.direccion||'')}" placeholder="Avda. Calderón Barca s/n" autocomplete="off"></div>
+    <div class="fila2">
+      <div class="campo"><label for="cl-ciu">Ciudad</label>
+        <input id="cl-ciu" value="${esc(c.ciudad||'')}" placeholder="Marbella, Málaga" autocomplete="off"></div>
+      <div class="campo"><label for="cl-ue">¿Empresa de otro país de la UE?</label>
+        <select id="cl-ue">
+          <option value="0"${!c.intraUE?' selected':''}>No · IVA normal</option>
+          <option value="1"${c.intraUE?' selected':''}>Sí · IVA 0 %</option>
+        </select></div>
+    </div>
     ${hist}
     <div class="acc">
       <button class="btn" type="button" data-cerrar>Cancelar</button>
@@ -1798,7 +2306,10 @@ function abrirCliente(id, nombre){
   $('#cl-ok').addEventListener('click',()=>{
     const d={nombre:$('#cl-nom').value.trim(), telefono:$('#cl-tel').value.trim(),
       vehiculos:coches, coches:coches.map(v=>v.modelo).join(', '),
-      idioma:$('#cl-idi').value, notas:$('#cl-not').value.trim()};
+      idioma:$('#cl-idi').value, notas:$('#cl-not').value.trim(),
+      nif:$('#cl-nif').value.trim(), direccion:$('#cl-dir').value.trim(),
+      ciudad:$('#cl-ciu').value.trim(), cp:$('#cl-cp').value.trim(),
+      intraUE:$('#cl-ue').value==='1'};
     if(!d.nombre){ $('#cl-nom').focus(); return; }
     if(editC) Object.assign(editC,d); else D.clientes.push(Object.assign({id:nid()},d));
     cerrar(); guardar(); pintar();
@@ -2442,7 +2953,8 @@ function abrirGasto(id){
   });
 }
 
-function cerrar(){ $('#hoja').classList.remove('on'); editT=editG=null; }
+function cerrar(){ $('#hoja').classList.remove('on');
+  $('#hojaC').classList.remove('ancho'); editT=editG=null; }
 
 /* ─── hoja de ingreso ──────────────────────────────────────────────── */
 let editI=null;
@@ -2742,6 +3254,7 @@ function pintar(){
   c.innerHTML = vista==='plazas'?vistaPlazas() : vista==='dinero'?vistaDinero()
     : vista==='clientes'?vistaClientes()
     : vista==='impuestos'?vistaImpuestos()
+    : vista==='facturas'?vistaFacturas()
     : vista==='ajustes'?vistaAjustes() : vistaRegistro();
   document.querySelectorAll('.tab').forEach(t=>
     t.setAttribute('aria-selected', String(t.dataset.v===vista)));
@@ -2766,6 +3279,7 @@ function pintar(){
     else if(a==='ingreso') abrirIngreso(null);
     else if(a==='fijo') abrirFijo(null);
     else if(a==='verplantillas'){ plantillasAbiertas=!plantillasAbiertas; pintar(); }
+    else if(a==='factura') abrirFactura(null);
     else if(a==='verpeligro'){ peligroAbierto=!peligroAbierto; pintar(); }
     else if(a==='plegarreg'){
       const ks=[...new Set(D.trabajos.map(t=>{
@@ -2815,6 +3329,7 @@ function pintar(){
   }));
   c.querySelectorAll('tr[data-p]').forEach(r=>r.addEventListener('click',()=>abrirPlaza(r.dataset.p)));
   c.querySelectorAll('tr[data-s]').forEach(r=>r.addEventListener('click',()=>abrirServicio(r.dataset.s)));
+  c.querySelectorAll('tr[data-fac]').forEach(r=>r.addEventListener('click',()=>verFactura(r.dataset.fac)));
   c.querySelectorAll('tr[data-fis]').forEach(r=>r.addEventListener('click',()=>{
     const k=r.dataset.fis;
     const v=prompt(k==='iva'?'IVA que se repercute (%)':'IRPF sobre el beneficio (%)', fiscal()[k]);
@@ -2824,7 +3339,7 @@ function pintar(){
     D.fiscal={...fiscal(), [k]:n}; guardar(); pintar();
   }));
   /* buscadores de las tablas largas */
-  [['q-ing','tb-ing'],['q-gas','tb-var'],['q-reg','tb-reg']].forEach(([q,tb])=>{
+  [['q-ing','tb-ing'],['q-gas','tb-var'],['q-reg','tb-reg'],['q-fac','tb-fac']].forEach(([q,tb])=>{
     const inp=c.querySelector('#'+q), cuerpo=c.querySelector('#'+tb);
     if(!inp||!cuerpo) return;
     inp.addEventListener('input',()=>{
@@ -2935,6 +3450,7 @@ auth.onAuthStateChanged(async user=>{
     if(!D.plazas || !D.plazas.length)       D.plazas    = PLAZAS_INI.map(p=>({...p}));
     if(!D.servicios || !D.servicios.length) D.servicios = SERVICIOS_INI.map(x=>({...x,id:nid()})).sort(ordenServicios);
     if(!D.clientes) D.clientes=[];
+  if(!D.facturas) D.facturas=[];
     if(!D.fiscal)   D.fiscal={...FISCAL_INI};
     if(D.fiscal.irpf===19) D.fiscal.irpf=20;
     (D.servicios||[]).forEach(x=>{ if(x.sena===undefined)
