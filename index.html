@@ -581,6 +581,10 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .sep-fis{margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--linea);
   font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--dim)}
+/* Aviso de «datos traídos de la ficha» dentro de la hoja de factura. */
+.f-hint{display:none;margin-top:6px;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.04em;color:var(--oro)}
+.f-hint.on{display:block}
 .acceso-err .cod{display:inline-block;margin-top:6px;font-family:var(--mono);
   font-size:10.5px;color:#8B4A3A;letter-spacing:.03em}
 .acc-avisar{display:block;margin-top:7px;padding:6px 9px;background:var(--alerta-suave);
@@ -1692,7 +1696,8 @@ function abrirFactura(id){
 
     <div class="campo"><label for="f-cli">Cliente</label>
       <input id="f-cli" list="lista-fcli" value="${esc(f.cliente)}" placeholder="Nombre o empresa" autocomplete="off">
-      <datalist id="lista-fcli">${nombres.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
+      <datalist id="lista-fcli">${nombres.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+      <div class="f-hint" id="f-hint"></div></div>
     <div class="fila2">
       <div class="campo"><label for="f-nif">NIF / CIF</label>
         <input id="f-nif" value="${esc(f.clienteNif)}" placeholder="B-12345678" autocomplete="off"></div>
@@ -1725,17 +1730,51 @@ function abrirFactura(id){
   $('#hoja').classList.add('on');
   $('#f-cli').focus();
 
-  /* Al escribir el cliente se rellenan sus datos fiscales si ya están
-     en su ficha: evita teclear el NIF cada vez. */
-  $('#f-cli').addEventListener('change',()=>{
+  /* Al escribir el cliente se rellenan sus datos fiscales desde su ficha:
+     evita teclear el NIF cada vez. Solo se rellena cuando el cliente
+     detectado cambia, para no pisar lo que se esté editando a mano. */
+  let fichaPuesta = normNom(f.cliente);
+
+  function clienteActual(){
     const n = normNom($('#f-cli').value);
-    const c = D.clientes.find(x=>normNom(x.nombre)===n);
+    return n ? D.clientes.find(x=>normNom(x.nombre)===n) : null;
+  }
+
+  /* Los coches del cliente van primero en el desplegable; detrás, el resto
+     del taller por si el coche entró antes con otro nombre. */
+  function refrescarCoches(c){
+    const dl = $('#lista-fveh'); if(!dl) return;
+    const suyos = ((c&&c.vehiculos)||[]).map(v=>v.modelo).filter(Boolean);
+    const resto = coches.filter(m=>!suyos.some(s=>normNom(s)===normNom(m)));
+    dl.innerHTML = suyos.concat(resto).map(n=>`<option value="${esc(n)}">`).join('');
+  }
+
+  function autoRellenar(){
+    const n = normNom($('#f-cli').value);
+    if(!n || n === fichaPuesta) return;
+    const c = clienteActual();
     if(!c) return;
-    if(c.nif) $('#f-nif').value = c.nif;
+    fichaPuesta = n;
+    if(c.nif)       $('#f-nif').value = c.nif;
     if(c.direccion) $('#f-dir').value = c.direccion;
-    if(c.ciudad) $('#f-ciu').value = c.ciudad;
-    if(c.cp) $('#f-cp').value = c.cp;
-    if(c.intraUE) $('#f-ue').value = '1';
+    if(c.ciudad)    $('#f-ciu').value = c.ciudad;
+    if(c.cp)        $('#f-cp').value  = c.cp;
+    $('#f-ue').value = c.intraUE ? '1' : '0';
+    refrescarCoches(c);
+    pintarTotales();
+    const h = $('#f-hint');
+    if(h){ h.textContent = `Datos traídos de la ficha de ${c.nombre}`; h.classList.add('on'); }
+  }
+  $('#f-cli').addEventListener('input',  autoRellenar);
+  $('#f-cli').addEventListener('change', autoRellenar);
+  refrescarCoches(clienteActual());
+
+  /* Si el coche ya está en la ficha del cliente, la matrícula sale sola. */
+  $('#f-veh').addEventListener('change',()=>{
+    if($('#f-mat').value.trim()) return;
+    const c = clienteActual(); if(!c) return;
+    const v = (c.vehiculos||[]).find(x=>normNom(x.modelo)===normNom($('#f-veh').value));
+    if(v && v.matricula) $('#f-mat').value = v.matricula;
   });
 
   function pintarLineas(){
@@ -1799,11 +1838,46 @@ function abrirFactura(id){
     let destino;
     if(editF2){ Object.assign(editF2, d); destino = editF2; }
     else { destino = Object.assign({id:nid()}, d); D.facturas.push(destino); }
+    fijarFicha(d);
     cerrar(); guardar(); pintar();
     verFactura(destino.id);
   });
 
 
+}
+
+/* Al guardar una factura, sus datos fiscales quedan pegados a la ficha del
+   cliente. Si el cliente todavía no tenía ficha, se le crea una. Así la
+   próxima factura a ese mismo nombre sale rellena sola y el NIF se teclea
+   una única vez en la vida. Lo que va vacío en la factura no borra lo que
+   ya hubiera guardado. */
+function fijarFicha(d){
+  const n = normNom(d.cliente);
+  if(!n) return null;
+
+  let c = D.clientes.find(x=>normNom(x.nombre)===n);
+  if(!c){
+    c = {id:nid(), nombre:d.cliente, telefono:'', vehiculos:[], coches:'',
+         idioma:'es', notas:'', nif:'', direccion:'', ciudad:'', cp:'', intraUE:false};
+    D.clientes.push(c);
+  }
+
+  if(d.clienteNif)    c.nif       = d.clienteNif;
+  if(d.clienteDir)    c.direccion = d.clienteDir;
+  if(d.clienteCiudad) c.ciudad    = d.clienteCiudad;
+  if(d.clienteCp)     c.cp        = d.clienteCp;
+  c.intraUE = !!d.intraUE;
+
+  /* El coche se suma al historial del cliente. No se duplica: si ya estaba,
+     como mucho se le completa la matrícula. */
+  if(d.vehiculo){
+    if(!Array.isArray(c.vehiculos)) c.vehiculos = [];
+    const ya = c.vehiculos.find(v=>normNom(v.modelo)===normNom(d.vehiculo));
+    if(ya){ if(d.matricula && !ya.matricula) ya.matricula = d.matricula; }
+    else c.vehiculos.push({id:nid(), modelo:d.vehiculo, matricula:d.matricula||'', color:''});
+    c.coches = c.vehiculos.map(v=>v.modelo).join(', ');
+  }
+  return c;
 }
 
 /* Rectificar = emitir una factura de abono: los mismos conceptos en
