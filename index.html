@@ -1682,9 +1682,13 @@ function abrirFactura(id){
   lineasF = (f.lineas||[]).map(l=>({...l}));
   if(!lineasF.length) lineasF.push({desc:'', cantidad:1, precio:0});
 
+  /* Las fichas mandan, pero también se ofrecen los nombres que sólo
+     aparecen en trabajos o en facturas ya emitidas. */
   const nombres = [...new Set(D.clientes.map(c=>c.nombre)
+    .concat(facturas().map(x=>x.cliente))
     .concat(D.trabajos.map(t=>t.cliente)))].filter(Boolean).sort();
   const coches = [...new Set(D.clientes.flatMap(c=>(c.vehiculos||[]).map(v=>v.modelo))
+    .concat(facturas().map(x=>x.vehiculo))
     .concat(D.trabajos.map(t=>t.coche)))].filter(Boolean).sort();
 
   $('#hojaC').innerHTML = `<h3>${editF2?'Editar factura':'Nueva factura'}</h3>
@@ -1740,6 +1744,42 @@ function abrirFactura(id){
     return n ? D.clientes.find(x=>normNom(x.nombre)===n) : null;
   }
 
+  /* «magna» tiene que encontrar a «Magna Super Cars S.L». Primero se busca
+     coincidencia exacta; si no la hay, un único nombre que empiece igual. */
+  function resolverNombre(txt, permitirParcial){
+    const n = normNom(txt); if(!n) return null;
+    const exacto = nombres.find(x=>normNom(x)===n);
+    if(exacto) return exacto;
+    if(!permitirParcial || n.length<3) return null;
+    const cand = nombres.filter(x=>normNom(x).startsWith(n));
+    return cand.length===1 ? cand[0] : null;
+  }
+
+  /* Última factura emitida a ese nombre. Es el respaldo para los clientes
+     que todavía no tienen ficha: los datos ya se escribieron una vez. */
+  function ultimaFacturaDe(n){
+    return facturas()
+      .filter(x=>normNom(x.cliente)===n && x.id!==(editF2&&editF2.id))
+      .sort((a,b)=> a.fecha<b.fecha?1 : a.fecha>b.fecha?-1 : (+b.numero)-(+a.numero))[0];
+  }
+
+  /* La ficha manda; lo que le falte se completa con la última factura. */
+  function datosDe(nombre){
+    const n = normNom(nombre);
+    const c = D.clientes.find(x=>normNom(x.nombre)===n);
+    const u = ultimaFacturaDe(n);
+    if(!c && !u) return null;
+    return {
+      nif:    (c&&c.nif)       || (u&&u.clienteNif)    || '',
+      dir:    (c&&c.direccion) || (u&&u.clienteDir)    || '',
+      ciudad: (c&&c.ciudad)    || (u&&u.clienteCiudad) || '',
+      cp:     (c&&c.cp)        || (u&&u.clienteCp)     || '',
+      ue:     c ? !!c.intraUE  : !!(u&&u.intraUE),
+      ficha:  c || null,
+      origen: (c && c.nif) ? 'su ficha de cliente' : (u ? `la factura ${u.numero}` : 'su ficha')
+    };
+  }
+
   /* Los coches del cliente van primero en el desplegable; detrás, el resto
      del taller por si el coche entró antes con otro nombre. */
   function refrescarCoches(c){
@@ -1749,24 +1789,30 @@ function abrirFactura(id){
     dl.innerHTML = suyos.concat(resto).map(n=>`<option value="${esc(n)}">`).join('');
   }
 
-  function autoRellenar(){
-    const n = normNom($('#f-cli').value);
-    if(!n || n === fichaPuesta) return;
-    const c = clienteActual();
-    if(!c) return;
+  function autoRellenar(permitirParcial){
+    const nombre = resolverNombre($('#f-cli').value, permitirParcial);
+    if(!nombre) return;
+    const n = normNom(nombre);
+    if(n === fichaPuesta) return;
+    const d = datosDe(nombre);
+    if(!d) return;
     fichaPuesta = n;
-    if(c.nif)       $('#f-nif').value = c.nif;
-    if(c.direccion) $('#f-dir').value = c.direccion;
-    if(c.ciudad)    $('#f-ciu').value = c.ciudad;
-    if(c.cp)        $('#f-cp').value  = c.cp;
-    $('#f-ue').value = c.intraUE ? '1' : '0';
-    refrescarCoches(c);
+    /* Al completar a medias («magna» → «Magna Super Cars S.L») se corrige
+       el nombre: en la factura tiene que ir la razón social entera. */
+    if(permitirParcial) $('#f-cli').value = nombre;
+    if(d.nif)    $('#f-nif').value = d.nif;
+    if(d.dir)    $('#f-dir').value = d.dir;
+    if(d.ciudad) $('#f-ciu').value = d.ciudad;
+    if(d.cp)     $('#f-cp').value  = d.cp;
+    $('#f-ue').value = d.ue ? '1' : '0';
+    refrescarCoches(d.ficha);
     pintarTotales();
     const h = $('#f-hint');
-    if(h){ h.textContent = `Datos traídos de la ficha de ${c.nombre}`; h.classList.add('on'); }
+    if(h){ h.textContent = `Datos traídos de ${d.origen}`; h.classList.add('on'); }
   }
-  $('#f-cli').addEventListener('input',  autoRellenar);
-  $('#f-cli').addEventListener('change', autoRellenar);
+  $('#f-cli').addEventListener('input',  ()=>autoRellenar(false));
+  $('#f-cli').addEventListener('change', ()=>autoRellenar(true));
+  $('#f-cli').addEventListener('blur',   ()=>autoRellenar(true));
   refrescarCoches(clienteActual());
 
   /* Si el coche ya está en la ficha del cliente, la matrícula sale sola. */
