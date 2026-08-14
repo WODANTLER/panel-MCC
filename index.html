@@ -265,6 +265,9 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .rej-fila:first-child .rej-cel.hoy{box-shadow:inset 0 3px 0 0 var(--oro)}
 .rej-cel.hoy+.rej-cel{border-left:1px solid rgba(143,106,42,.35)}
 .rej-cel.hoy{border-right-color:rgba(143,106,42,.35)}
+/* Casillas donde va a caer la barra que se está arrastrando. */
+.rej-cel.destino{background:var(--oro-suave);
+  box-shadow:inset 0 0 0 1px var(--oro-claro)}
 .rej-dias .rej-cel{font-family:var(--mono);font-size:10px;color:var(--dim)}
 .rej-dias .rej-cel b{color:var(--tinta);font-weight:600;font-size:12.5px}
 .rej-dias .rej-cel.fuera b{color:var(--dim);font-weight:400}
@@ -592,6 +595,8 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
   border:1px solid var(--linea2);border-top:0;max-height:230px;overflow-y:auto;
   box-shadow:0 10px 26px rgba(20,20,26,.10);display:none}
 .sug.on{display:block}
+.sug.arriba{border-top:1px solid var(--linea2);border-bottom:0;
+  box-shadow:0 -10px 26px rgba(20,20,26,.10)}
 .sug button{display:block;width:100%;text-align:left;background:#fff;border:0;
   border-bottom:1px solid var(--linea);padding:10px 12px;cursor:pointer;
   font-family:var(--sans);font-size:15px;color:var(--tinta);line-height:1.3}
@@ -1807,7 +1812,20 @@ function abrirFactura(id){
 
   function autoRellenar(permitirParcial){
     const nombre = resolverNombre($('#f-cli').value, permitirParcial);
-    if(!nombre) return;
+    if(!nombre){
+      /* Si lo escrito encaja con varios clientes no se puede adivinar, pero
+         hay que decirlo: si no, el campo se queda a medias en silencio. */
+      const n = normNom($('#f-cli').value);
+      const h = $('#f-hint');
+      if(permitirParcial && h && n.length>=3){
+        const cand = nombres.filter(x=>normNom(x).startsWith(n));
+        if(cand.length>1){
+          h.textContent = `Hay ${cand.length} clientes que empiezan por «${$('#f-cli').value.trim()}». Elegí uno de la lista.`;
+          h.classList.add('on');
+        }
+      }
+      return;
+    }
     const n = normNom(nombre);
     if(n === fichaPuesta) return;
     const d = datosDe(nombre);
@@ -1830,7 +1848,10 @@ function abrirFactura(id){
   autocompletar($('#f-veh'), opcionesCoche, ()=>ponerMatricula());
   $('#f-cli').addEventListener('input',  ()=>autoRellenar(false));
   $('#f-cli').addEventListener('change', ()=>autoRellenar(true));
-  $('#f-cli').addEventListener('blur',   ()=>setTimeout(()=>autoRellenar(true), 200));
+  /* Sin retardo: al pulsar una sugerencia el mousedown cancela el blur, así
+     que aquí sólo llegamos cuando el campo se abandona de verdad. Con retardo,
+     darle a «Guardar» justo después de teclear guardaba «mag» a medias. */
+  $('#f-cli').addEventListener('blur',   ()=>autoRellenar(true));
 
   /* Si el coche ya está en la ficha del cliente, la matrícula sale sola. */
   function ponerMatricula(){
@@ -2298,7 +2319,19 @@ function autocompletar(inp, opciones, alElegir){
       return `<button type="button" data-i="${i}">${esc(valorDe(o))}${m}</button>`;
     }).join('');
     caja.style.top = (inp.offsetTop + inp.offsetHeight) + 'px';
+    caja.classList.remove('arriba');
     caja.classList.add('on');
+    /* Si el campo está al final de la hoja, la lista se abre hacia arriba:
+       si no, queda cortada por el borde y no se puede elegir. */
+    const cont = inp.closest('.hoja-c');
+    if(cont){
+      const rI = inp.getBoundingClientRect(), rC = cont.getBoundingClientRect();
+      if(rI.bottom + caja.offsetHeight > rC.bottom - 8
+         && rI.top - caja.offsetHeight > rC.top + 8){
+        caja.style.top = (inp.offsetTop - caja.offsetHeight) + 'px';
+        caja.classList.add('arriba');
+      }
+    }
     idx = -1;
     // mousedown y no click: si esperamos al click, el blur del input cierra
     // la lista antes de que llegue.
@@ -2478,10 +2511,18 @@ function abrirCliente(id, nombre){
   /* Candidatos a unificar: cualquier otro cliente del sistema, tenga ficha
      propia o exista sólo dentro de los trabajos. Sólo con la ficha ya
      guardada, porque hace falta un destino de verdad al que mover todo. */
-  const unificables = !editC ? [] : clientesConHistorial()
-    .filter(x=>normNom(x.nombre) !== normNom(c.nombre))
-    .map(x=>({nombre:x.nombre, n:x.trabajos.length, ficha:x.ficha}))
-    .sort((a,b)=>b.n-a.n);
+  const unificables = !editC ? [] : (()=>{
+    const base = clientesConHistorial()
+      .map(x=>({nombre:x.nombre, n:x.trabajos.length, ficha:x.ficha}));
+    // Nombres que sólo existen en facturas y por tanto no salen del historial.
+    const vistos = new Set(base.map(x=>normNom(x.nombre)));
+    facturas().forEach(f=>{
+      const k = normNom(f.cliente);
+      if(k && !vistos.has(k)){ vistos.add(k); base.push({nombre:f.cliente, n:0, ficha:false}); }
+    });
+    return base.filter(x=>normNom(x.nombre) !== normNom(c.nombre))
+               .sort((a,b)=>b.n-a.n);
+  })();
 
   $('#hojaC').innerHTML = `<h3>${editC?'Editar cliente':'Nuevo cliente'}</h3>
     <div class="campo"><label for="cl-nom">Nombre</label>
@@ -2586,9 +2627,12 @@ function abrirCliente(id, nombre){
   if(uniOk) uniOk.addEventListener('click',()=>{
     const origen = $('#cl-uni').value;
     if(!origen) return;
+    if(!confirm(`Vas a pasar todo lo de «${origen}» a «${$('#cl-nom').value.trim()}».\n\n`
+      + `Sus trabajos, cobros, facturas y coches quedan en esta ficha y «${origen}» `
+      + `desaparece. Esto no se puede deshacer.\n\n¿Seguimos?`)) return;
     /* Se guarda primero lo que esté escrito en la hoja: si no, la unificación
        trabaja sobre la ficha vieja y se pierde lo tecleado. */
-    guardarFichaCliente();
+    if(!guardarFichaCliente()) return;
     const r = unificarCliente(editC, origen);
     if(!r) return;
     guardar(); pintar();
@@ -2898,17 +2942,16 @@ function guardarTrabajo(){
    Un toque abre el panel de acciones; si se arrastra, se mueve de día o
    de plaza. Se distingue por la distancia recorrida, así que en la tablet
    un toque sigue siendo un toque.
-   La pista mide siempre 7 columnas, así que el día bajo el dedo sale de
-   la proporción, no de un ancho fijo en píxeles.                      */
-function diaEnPista(pista, clientX){
-  const r = pista.getBoundingClientRect();
-  const col = Math.max(0, Math.min(6, Math.floor(((clientX - r.left) / r.width) * 7)));
-  return sumar(aFecha(pista.dataset.lunes), col);
-}
-
+   Regla de oro: lo que se ve mientras se arrastra es exactamente lo que se
+   guarda al soltar. Antes la vista previa saltaba por altura de fila y el
+   destino se decidía por el elemento bajo el dedo; cuando las dos cuentas
+   no coincidían, la barra caía en otra plaza.                          */
 function montarArrastre(el){
-  let t0=null, x0=0, y0=0, origen=null, moviendo=false, modo='mover',
-      anchoDia=0, altoFila=0, base=null;
+  let t0=null, x0=0, y0=0, moviendo=false, modo='mover',
+      anchoDia=0, pistas=[], pistaIni=null, destino=null, base=null, col0=0, nCel=1;
+
+  const limpiar = ()=> document.querySelectorAll('.rej-cel.destino')
+    .forEach(c=>c.classList.remove('destino'));
 
   el.addEventListener('pointerdown', ev=>{
     if(ev.button !== undefined && ev.button !== 0) return;
@@ -2919,13 +2962,40 @@ function montarArrastre(el){
     // Los extremos estiran la estancia; el centro mueve el coche de sitio.
     modo = (ev.target && ev.target.dataset && ev.target.dataset.tira) || 'mover';
     x0=ev.clientX; y0=ev.clientY;
-    origen = diaEnPista(pista, ev.clientX);
-    anchoDia = pista.getBoundingClientRect().width / 7;
-    altoFila = (el.closest('.rej-fila')||pista).getBoundingClientRect().height;
+
+    /* Se miden todas las pistas al empezar el arrastre. Durante el gesto no
+       se repinta nada, así que estas medidas siguen valiendo y el destino se
+       calcula siempre contra la misma referencia. */
+    pistas = [...document.querySelectorAll('.rej-pista[data-plaza]')].map(p=>({
+      el:p, plaza:+p.dataset.plaza, lunes:p.dataset.lunes, r:p.getBoundingClientRect()
+    }));
+    pistaIni = pistas.find(p=>p.el===pista);
+    if(!pistaIni){ t0=null; return; }
+
+    anchoDia = pistaIni.r.width/7;
+    if(!(anchoDia > 0)){ t0=null; return; }   // pista sin medida: no se arrastra
     base = {left: el.offsetLeft, width: el.offsetWidth};
-    moviendo=false;
+    col0 = Math.round(base.left/anchoDia) || 0;            // día en que empieza la barra
+    nCel = Math.max(1, Math.round(base.width/anchoDia) || 1); // días que ocupa esta semana
+    destino=null; moviendo=false;
     el.setPointerCapture(ev.pointerId);
   });
+
+  /* Fila que hay bajo el dedo. Si cae justo en el hueco entre dos semanas se
+     coge la más cercana, para que soltar ahí no anule el movimiento. */
+  function pistaBajo(y){
+    return pistas.find(p=> y>=p.r.top && y<=p.r.bottom)
+      || pistas.reduce((a,b)=> Math.abs(y-(b.r.top+b.r.bottom)/2)
+                             < Math.abs(y-(a.r.top+a.r.bottom)/2) ? b : a, pistas[0]);
+  }
+
+  /* Pinta en dorado las casillas exactas donde va a caer la barra. */
+  function marcar(p, desde, cuantas){
+    limpiar();
+    const n = Math.max(1, cuantas===undefined ? nCel : cuantas);
+    const cels = p.el.querySelectorAll('.rej-cel');
+    for(let i=desde; i<desde+n; i++) if(cels[i]) cels[i].classList.add('destino');
+  }
 
   el.addEventListener('pointermove', ev=>{
     if(!t0) return;
@@ -2936,42 +3006,49 @@ function montarArrastre(el){
     ev.preventDefault();
     el.classList.add('arrastrando');
 
-    /* La vista previa se pega a la rejilla: salta de día en día en vez de
-       seguir al píxel. Así se ve exactamente dónde va a caer y no da la
-       sensación de que se mueve solo. */
-    if(modo==='mover'){
-      const saltoX = Math.round(dx/anchoDia)*anchoDia;
-      const saltoY = Math.round(dy/altoFila)*altoFila;
-      el.style.transform = `translate(${saltoX}px, ${saltoY}px)`;
-    }else{
-      const salto = Math.round(dx/anchoDia)*anchoDia;
+    const salto = Math.round(dx/anchoDia);
+
+    if(modo!=='mover'){
+      destino = {salto};
       if(modo==='der'){
-        el.style.width = Math.max(anchoDia-6, base.width+salto)+'px';
+        el.style.width = Math.max(anchoDia-6, base.width+salto*anchoDia)+'px';
+        marcar(pistaIni, col0, nCel+salto);
       }else{
-        const w = Math.max(anchoDia-6, base.width-salto);
+        const w = Math.max(anchoDia-6, base.width-salto*anchoDia);
         el.style.left = (base.left + (base.width-w))+'px';
         el.style.width = w+'px';
+        marcar(pistaIni, col0+Math.min(salto, nCel-1), nCel-salto);
       }
+      return;
     }
+
+    /* Un único cálculo, que es a la vez lo que se dibuja y lo que se guarda
+       al soltar. La barra se pega a la fila destino, así que cae exactamente
+       donde se la ve: no hay forma de que el resultado sorprenda. */
+    const p = pistaBajo(ev.clientY);
+    destino = {salto, plaza:p.plaza,
+               dias: diasEntre(aFecha(pistaIni.lunes), aFecha(p.lunes)) + salto};
+    el.style.transform = `translate(${salto*anchoDia}px, ${p.r.top - pistaIni.r.top}px)`;
+    marcar(p, col0+salto);
   });
 
-  el.addEventListener('pointerup', ev=>{
+  el.addEventListener('pointerup', ()=>{
     if(!t0) return;
-    const trabajo=t0, desdeDia=origen;
-    t0=null;
+    const trabajo=t0, d=destino, m=modo, movido=moviendo;
+    t0=null; destino=null; moviendo=false;
     el.classList.remove('arrastrando');
     el.style.transform=''; el.style.width=''; el.style.left='';
+    limpiar();
 
-    if(!moviendo){ abrirAcciones(el.dataset.t); return; }
+    if(!movido || !d){ abrirAcciones(el.dataset.t); return; }
 
     // ── estirar por un extremo ──
-    if(modo!=='mover'){
-      const salto = Math.round((ev.clientX-x0)/anchoDia);
-      if(salto!==0){
-        if(modo==='der'){
-          trabajo.dias = Math.max(1, trabajo.dias + salto);
+    if(m!=='mover'){
+      if(d.salto!==0){
+        if(m==='der'){
+          trabajo.dias = Math.max(1, trabajo.dias + d.salto);
         }else{
-          const nuevos = Math.max(1, trabajo.dias - salto);
+          const nuevos = Math.max(1, trabajo.dias - d.salto);
           trabajo.entra = aIso(sumar(aFecha(trabajo.entra), trabajo.dias - nuevos));
           trabajo.dias = nuevos;
         }
@@ -2984,33 +3061,25 @@ function montarArrastre(el){
       pintar(); return;
     }
 
-    /* El día destino se calcula por el desplazamiento redondeado, no por
-       dónde quedó el dedo: el dedo tapa la barra y siempre cae un poco
-       corrido. Así soltar en mitad de una casilla no cambia el resultado. */
-    const salto = Math.round((ev.clientX - x0)/anchoDia);
+    // ── mover de día o de plaza ──
+    if(d.dias===0 && d.plaza===trabajo.plaza){ pintar(); return; }   // se quedó donde estaba
 
-    el.style.pointerEvents='none';
-    const bajo = document.elementFromPoint(ev.clientX, ev.clientY);
-    el.style.pointerEvents='';
-    const pista = bajo && bajo.closest ? bajo.closest('.rej-pista') : null;
-    if(!pista) { pintar(); return; }
-
-    const nuevaPlaza = +pista.dataset.plaza;
-    if(salto===0 && nuevaPlaza===trabajo.plaza) return;      // no se movió
-
-    const nuevaEntra = aIso(sumar(aFecha(trabajo.entra), salto));
-    const choca = pisaA({...trabajo, plaza:nuevaPlaza}, nuevaEntra, trabajo.dias);
+    const nuevaEntra = aIso(sumar(aFecha(trabajo.entra), d.dias));
+    const choca = pisaA({...trabajo, plaza:d.plaza}, nuevaEntra, trabajo.dias);
     if(choca.length && !confirm(
         `Ahí ya está ${choca.map(o=>o.coche).join(' y ')}.\n¿Lo pones igual?`)){
       pintar(); return;
     }
     trabajo.entra = nuevaEntra;
-    trabajo.plaza = nuevaPlaza;
+    trabajo.plaza = d.plaza;
     guardar(); pintar();
   });
 
   el.addEventListener('pointercancel', ()=>{
-    t0=null; el.classList.remove('arrastrando'); el.style.transform='';
+    t0=null; destino=null; moviendo=false;
+    el.classList.remove('arrastrando');
+    el.style.transform=''; el.style.width=''; el.style.left='';
+    limpiar();
   });
 }
 
