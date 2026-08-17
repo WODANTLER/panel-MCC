@@ -147,6 +147,8 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 }
 @keyframes late{0%,100%{box-shadow:0 0 0 0 rgba(190,59,38,.45)}
                 60%{box-shadow:0 0 0 7px rgba(190,59,38,0)}}
+/* Aviso visual de que ya se puede arrastrar, tras mantener pulsado. */
+.res.listo{box-shadow:0 0 0 3px var(--oro);z-index:15}
 .res.arrastrando{cursor:grabbing;z-index:20;opacity:.92;
   box-shadow:0 8px 22px rgba(20,20,26,.28);transition:none}
 /* Tiradores de los extremos: estiran o acortan la estancia. */
@@ -175,7 +177,7 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
   max-width:540px;max-height:92vh;overflow-y:auto;padding:20px;
   box-shadow:0 20px 60px rgba(20,20,26,.22)}
 .hoja-c h3{font-size:14px;letter-spacing:.08em;margin-bottom:16px}
-.campo{margin-bottom:13px;position:relative}
+.campo{margin-bottom:13px}
 .campo label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.09em;
   text-transform:uppercase;color:var(--dim);margin-bottom:5px}
 .campo input,.campo select{width:100%;background:#fff;border:1px solid var(--linea2);
@@ -265,9 +267,6 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .rej-fila:first-child .rej-cel.hoy{box-shadow:inset 0 3px 0 0 var(--oro)}
 .rej-cel.hoy+.rej-cel{border-left:1px solid rgba(143,106,42,.35)}
 .rej-cel.hoy{border-right-color:rgba(143,106,42,.35)}
-/* Casillas donde va a caer la barra que se está arrastrando. */
-.rej-cel.destino{background:var(--oro-suave);
-  box-shadow:inset 0 0 0 1px var(--oro-claro)}
 .rej-dias .rej-cel{font-family:var(--mono);font-size:10px;color:var(--dim)}
 .rej-dias .rej-cel b{color:var(--tinta);font-weight:600;font-size:12.5px}
 .rej-dias .rej-cel.fuera b{color:var(--dim);font-weight:400}
@@ -319,7 +318,7 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .mini-form input:focus,.mini-form select:focus{outline:0;border-color:var(--oro);
   box-shadow:0 0 0 3px var(--oro-suave)}
 .cobro-nuevo{margin-top:4px}
-.mini-nota{margin:8px 0 0;font-size:12px;line-height:1.4;color:var(--dim)}
+.mini-nota{margin:8px 0 0;font-size:12px;line-height:1.4}
 .mini-nota.con{color:var(--oro)}
 .mini-nota.sin{color:var(--dim)}
 
@@ -375,6 +374,29 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .peligro-c .peligro-tip{font-size:12.5px;color:#8B5A4A}
 
 /* ── selector de año ─────────────────────────────────────────────────── */
+/* ── selector de periodo ─────────────────────────────────────────────── */
+.selper{margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--linea)}
+.selper-fila{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.selper-et{font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim)}
+.selper-tipo{display:flex;gap:1px;background:var(--linea);border:1px solid var(--linea)}
+.tipo-btn{appearance:none;background:var(--panel);border:0;cursor:pointer;
+  padding:7px 15px;font-family:var(--display);
+  font-variation-settings:'wdth' 84,'wght' 600;font-size:12px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--dim);transition:background .16s,color .16s}
+.tipo-btn:hover{background:#fff;color:var(--tinta)}
+.tipo-btn.on{background:var(--tinta);color:#fff}
+.tipo-btn:focus-visible{outline:2px solid var(--oro);outline-offset:-2px}
+.selper-anio{display:flex;gap:8px;margin-left:auto}
+.selper-detalle{display:flex;gap:1px;background:var(--linea);
+  border:1px solid var(--linea);margin-top:10px;overflow-x:auto}
+.selper-detalle .tri-btn{flex:1;min-width:56px;padding:8px 6px;line-height:1.3}
+.selper-detalle .tri-btn em{display:block;font-style:normal;font-size:9px;opacity:.75}
+.mes.apagado{opacity:.35}
+.mes.apagado:hover{opacity:.7}
+.rbloque-nota{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--dim);text-align:center}
+
 .selanio{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:20px;
   padding-bottom:12px;border-bottom:1px solid var(--linea)}
 .selanio-et{font-family:var(--mono);font-size:10px;letter-spacing:.12em;
@@ -515,12 +537,15 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .fac{width:182mm;background:#fff;padding:0;margin:0 auto;
   font-family:var(--sans);color:#14141A;font-size:10.5pt;line-height:1.45}
 .fac-top{display:flex;justify-content:space-between;align-items:flex-start;
-  gap:16px;padding-bottom:14px;border-bottom:2px solid #14141A}
+  gap:22px;padding-bottom:16px;border-bottom:2px solid #14141A}
+.fac-marca{min-width:0;flex:1 1 auto}
+.fac-meta{flex:0 0 auto}
 .fac-marca{display:flex;gap:12px;align-items:flex-start}
 .fac-logo{width:52px;height:52px;flex:none}
 .fac-emisor{display:flex;flex-direction:column;line-height:1.4}
-.fac-emisor b{font-family:var(--display);font-variation-settings:'wdth' 82,'wght' 700;
-  font-size:12pt;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}
+.fac-emisor b{font-family:var(--display);font-variation-settings:'wdth' 76,'wght' 700;
+  font-size:10.5pt;letter-spacing:.02em;text-transform:uppercase;
+  margin-bottom:3px;line-height:1.15;white-space:nowrap}
 .fac-emisor span{font-size:8pt;color:#55555e}
 .fac-meta{text-align:right}
 .fac-meta h1{font-family:var(--display);font-variation-settings:'wdth' 78,'wght' 700;
@@ -541,7 +566,9 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .fac-tabla th{font-family:var(--mono);font-size:7.5pt;letter-spacing:.12em;
   text-transform:uppercase;color:#8a8a92;font-weight:400;text-align:left;
   padding:8px 10px;border-bottom:1px solid #14141A}
-.fac-tabla td{padding:9px 10px;border-bottom:1px solid #ececE6;font-size:10pt}
+.fac-tabla td{padding:9px 10px;border-bottom:1px solid #ececE6;font-size:10pt;
+  vertical-align:top}
+.fac-tabla td:first-child{padding-right:18px}
 .fac-tabla .c{text-align:center;width:22mm}
 .fac-tabla .d{text-align:right;width:28mm;font-family:var(--mono)}
 .fac-tabla tr.vac td{height:26px;border-bottom:1px solid #f2f2ee}
@@ -584,26 +611,6 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .sep-fis{margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--linea);
   font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--dim)}
-/* Aviso de «datos traídos de la ficha» dentro de la hoja de factura. */
-.f-hint{display:none;margin-top:6px;font-family:var(--mono);font-size:10.5px;
-  letter-spacing:.04em;color:var(--oro)}
-.f-hint.on{display:block}
-
-/* Sugerencias propias. El <datalist> del navegador se pintaba en blanco
-   sobre blanco en algunos Mac, así que la lista la dibujamos nosotros. */
-.sug{position:absolute;left:0;right:0;z-index:60;background:#fff;
-  border:1px solid var(--linea2);border-top:0;max-height:230px;overflow-y:auto;
-  box-shadow:0 10px 26px rgba(20,20,26,.10);display:none}
-.sug.on{display:block}
-.sug.arriba{border-top:1px solid var(--linea2);border-bottom:0;
-  box-shadow:0 -10px 26px rgba(20,20,26,.10)}
-.sug button{display:block;width:100%;text-align:left;background:#fff;border:0;
-  border-bottom:1px solid var(--linea);padding:10px 12px;cursor:pointer;
-  font-family:var(--sans);font-size:15px;color:var(--tinta);line-height:1.3}
-.sug button:last-child{border-bottom:0}
-.sug button:hover,.sug button.sel{background:var(--oro-suave)}
-.sug .meta{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.04em;
-  color:var(--dim);margin-top:3px;text-transform:none}
 .acceso-err .cod{display:inline-block;margin-top:6px;font-family:var(--mono);
   font-size:10.5px;color:#8B4A3A;letter-spacing:.03em}
 .acc-avisar{display:block;margin-top:7px;padding:6px 9px;background:var(--alerta-suave);
@@ -1220,9 +1227,10 @@ const mesesAbiertos=new Set();   // meses desplegados en Wallet
 const mesesTocados=new Set();    // bloques donde el usuario ya eligió
 let triAbierto=null;             // trimestre con el detalle desplegado
 let plantillasAbiertas=false;    // lista de gastos fijos recurrentes
-let mesRueda=null;               // mes que muestra la rueda de la derecha
 let listaSel='ing';              // pestaña de movimientos visible
-let triRueda=null;               // trimestre de la rueda izquierda (null = año)
+/* Periodo de Wallet. Manda sobre todo: indicadores, barras, ruedas y
+   listas. Arranca en el mes en curso, que es lo que se mira a diario. */
+let periodo = {tipo:'mes', anio:hoy.getFullYear(), mes:hoy.getMonth(), tri:TRIMESTRE(aIso(hoy))};
 let peligroAbierto=false;        // zona de borrado, cerrada por defecto
 let mesRef=new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 const $ = s => document.querySelector(s);
@@ -1356,7 +1364,18 @@ function vistaPlazas(){
 /* ─── dinero ───────────────────────────────────────────────────────── */
 function vistaDinero(){
   const as=anios();
-  if(anioSel===null||!as.includes(anioSel)) anioSel=as[0];
+  if(!as.includes(periodo.anio)) periodo.anio = as[0];
+  anioSel = periodo.anio;                       // el resto de la vista lo usa
+
+  /* Qué fechas entran en el periodo elegido. */
+  const enPeriodo = d => d.getFullYear()===periodo.anio && (
+      periodo.tipo==='anio' ? true
+    : periodo.tipo==='tri'  ? Math.floor(d.getMonth()/3)+1===periodo.tri
+    :                         d.getMonth()===periodo.mes);
+
+  const etPer = periodo.tipo==='anio' ? String(periodo.anio)
+    : periodo.tipo==='tri' ? `T${periodo.tri} · ${periodo.anio}`
+    : `${MESES[periodo.mes]} ${periodo.anio}`;
   const f=porMes(anioSel), fAnt=porMes(anioSel-1);
   const conMov=f.filter(x=>x.ing||x.gas);
   const tI=f.reduce((a,x)=>a+x.ing,0), tG=f.reduce((a,x)=>a+x.gas,0);
@@ -1369,25 +1388,46 @@ function vistaDinero(){
   const fijoMes = gastosFijosAnio.reduce((a,g)=>a+(g.importe||0),0)/mesesConFijos;
   const tope=Math.max(1,...f.map(x=>Math.max(x.ing,x.gas)));
 
-  let h=`<div class="selanio">
-      <span class="selanio-et">Año</span>
-      ${as.map(a=>`<button class="anio-btn${a===anioSel?' on':''}" data-anio="${a}">${a}</button>`).join('')}
-    </div>`;
+  let h=`<div class="selper">
+    <div class="selper-fila">
+      <span class="selper-et">Periodo</span>
+      <div class="selper-tipo">
+        ${[['mes','Mes'],['tri','Trimestre'],['anio','Año']].map(([k,n])=>
+          `<button class="tipo-btn${periodo.tipo===k?' on':''}" data-pertipo="${k}">${n}</button>`).join('')}
+      </div>
+      <div class="selper-anio">
+        ${as.map(a=>`<button class="anio-btn${a===periodo.anio?' on':''}" data-anio="${a}">${a}</button>`).join('')}
+      </div>
+    </div>
+    ${periodo.tipo==='mes'?`<div class="selper-detalle">
+      ${MESES.map((m,i)=>`<button class="tri-btn${i===periodo.mes?' on':''}" data-permes="${i}">${m}</button>`).join('')}
+    </div>`:''}
+    ${periodo.tipo==='tri'?`<div class="selper-detalle">
+      ${[1,2,3,4].map(t=>`<button class="tri-btn${t===periodo.tri?' on':''}" data-pertri="${t}">
+        T${t} <em>${['ene–mar','abr–jun','jul–sep','oct–dic'][t-1]}</em></button>`).join('')}
+    </div>`:''}
+  </div>`;
+
+  /* Los indicadores hablan del periodo elegido, no del año entero. */
+  const pIng = D.cobros.filter(c=>enPeriodo(aFecha(c.fecha))).reduce((a,c)=>a+(c.importe||0),0);
+  const gPer = D.gastos.filter(g=>enPeriodo(aFecha(g.fecha)));
+  const pGas = gPer.reduce((a,g)=>a+(g.importe||0),0);
+  const pFij = gPer.filter(esGastoFijo).reduce((a,g)=>a+(g.importe||0),0);
+  const pVar = pGas - pFij;
 
   h+=`<div class="kpis">
-    <div class="kpi destaca"><span class="et">Ingresos ${anioSel}</span>
-      <div class="n">${eur(tI)}<small>€</small></div>
-      <div class="sub">${varn===null?conMov.length+' meses con movimiento'
-        :(varn>=0?'+':'')+varn+' % frente a '+(anioSel-1)}</div></div>
+    <div class="kpi destaca"><span class="et">Ingresos · ${esc(etPer)}</span>
+      <div class="n">${eur(pIng)}<small>€</small></div>
+      <div class="sub">todo lo cobrado</div></div>
     <div class="kpi"><span class="et">Gastos</span>
-      <div class="n">${eur(tG)}<small>€</small></div>
-      <div class="sub">gastos del negocio, sin impuestos</div></div>
+      <div class="n">${eur(pGas)}<small>€</small></div>
+      <div class="sub">del negocio, sin impuestos</div></div>
     <div class="kpi"><span class="et">Diferencia</span>
-      <div class="n"${tI-tG<0?' style="color:var(--alerta)"':''}>${eur(tI-tG)}<small>€</small></div>
+      <div class="n"${pIng-pGas<0?' style="color:var(--alerta)"':''}>${eur(pIng-pGas)}<small>€</small></div>
       <div class="sub">antes de impuestos</div></div>
-    <div class="kpi"><span class="et">Coste fijo al mes</span>
-      <div class="n">${eur(fijoMes)}<small>€</small></div>
-      <div class="sub">alquiler, luz, agua, alarma</div></div></div>`;
+    <div class="kpi"><span class="et">Gastos fijos</span>
+      <div class="n">${eur(pFij)}<small>€</small></div>
+      <div class="sub">${pGas?Math.round(100*pFij/pGas):0} % de lo que sale</div></div></div>`;
 
   h+=`<div class="cab"><h2>Mes a mes</h2><span class="nota">oro = ingresos · gris = gastos</span></div>
   <div class="barras">`
@@ -1437,23 +1477,12 @@ function vistaDinero(){
 
   /* Rueda izquierda: el año entero o un trimestre suelto. Así se puede
      mirar el mismo periodo que se liquida en Impuestos. */
-  const dentroPeriodo = d => d.getFullYear()===anioSel &&
-    (triRueda===null || Math.floor(d.getMonth()/3)+1===triRueda);
-  const rAnio = reparto(dentroPeriodo);
-  const etPeriodo = triRueda===null ? `Todo ${anioSel}`
-    : `T${triRueda} · ${['ene–mar','abr–jun','jul–sep','oct–dic'][triRueda-1]} ${anioSel}`;
+  const rAnio = reparto(enPeriodo);
+  const etPeriodo = etPer;
 
-  // mes de la rueda derecha: el actual si estamos en ese año, si no el último con datos
-  const mesesConDatos = [...new Set(
-    D.cobros.concat(D.gastos)
-      .filter(x=>aFecha(x.fecha).getFullYear()===anioSel)
-      .map(x=>aFecha(x.fecha).getMonth()))].sort((a,b)=>a-b);
-  if(mesRueda===null || !mesesConDatos.includes(mesRueda)){
-    mesRueda = mesesConDatos.includes(hoy.getMonth()) ? hoy.getMonth()
-             : (mesesConDatos[mesesConDatos.length-1] ?? hoy.getMonth());
-  }
-  const iMes = mesesConDatos.indexOf(mesRueda);
-  const rMes = reparto(d => d.getFullYear()===anioSel && d.getMonth()===mesRueda);
+  // La rueda derecha muestra el año completo: sirve de referencia para
+  // saber si el periodo elegido va mejor o peor de lo habitual.
+  const rAno = reparto(d => d.getFullYear()===periodo.anio);
 
   h+=`<div class="cab" style="margin-top:34px"><h2>A dónde va el dinero</h2>
     <span class="nota">sobre todo lo que entró, facturado y en efectivo</span></div>
@@ -1466,26 +1495,20 @@ function vistaDinero(){
         <span class="rb-nav"></span>
       </div>
       <div class="rbloque-sub">${eur(rAnio.entra)} € entraron</div>
-      <div class="tri-sel">
-        <button class="tri-btn${triRueda===null?' on':''}" data-tri-rueda="">Año</button>
-        ${[1,2,3,4].map(t=>`<button class="tri-btn${triRueda===t?' on':''}" data-tri-rueda="${t}">T${t}</button>`).join('')}
-      </div>
       ${rueda(partesDe(rAnio), eur(rAnio.libre)+' €', 'queda limpio')}
       ${leyenda(rAnio)}
     </section>
 
     <section class="rbloque">
       <div class="rbloque-cab">
-        <span class="rb-nav"><button class="flecha" data-rmes="-1" ${iMes<=0?'disabled':''}>‹</button></span>
-        <b>${MESES[mesRueda]} ${anioSel}</b>
-        <span class="rb-nav"><button class="flecha" data-rmes="1" ${iMes>=mesesConDatos.length-1?'disabled':''}>›</button></span>
+        <span class="rb-nav"></span>
+        <b>Todo ${periodo.anio}</b>
+        <span class="rb-nav"></span>
       </div>
-      <div class="rbloque-sub">${eur(rMes.entra)} € entraron</div>
-      <div class="mes-sel">
-        ${mesesConDatos.map(m=>`<button class="tri-btn${m===mesRueda?' on':''}" data-mes-rueda="${m}">${MESES[m]}</button>`).join('')}
-      </div>
-      ${rueda(partesDe(rMes), eur(rMes.libre)+' €', 'queda limpio')}
-      ${leyenda(rMes)}
+      <div class="rbloque-sub">${eur(rAno.entra)} € entraron</div>
+      <div class="rbloque-nota">para comparar con el periodo</div>
+      ${rueda(partesDe(rAno), eur(rAno.libre)+' €', 'queda limpio')}
+      ${leyenda(rAno)}
     </section>
   </div>
 
@@ -1498,7 +1521,7 @@ function vistaDinero(){
   /* ── gastos, separados en fijos y variables y agrupados por mes ─────
      Fijo es lo que se repite todos los meses; variable, lo que cambia.
      Agrupar por mes es lo que permite comparar y detectar el mes raro. */
-  const gAnio = D.gastos.filter(g=>aFecha(g.fecha).getFullYear()===anioSel);
+  const gAnio = D.gastos.filter(g=>enPeriodo(aFecha(g.fecha)));
 
   /* Agrupa por mes cualquier lista de movimientos. Las filas se pintan
      siempre y se ocultan por CSS: así el buscador puede encontrar algo
@@ -1539,7 +1562,7 @@ function vistaDinero(){
   /* ── listas en pestañas ────────────────────────────────────────────
      Ingresos, variables y fijos comparten sitio: se ve una por vez y
      Wallet deja de ser una tirada interminable.                       */
-  const ingA = D.cobros.filter(c=>aFecha(c.fecha).getFullYear()===anioSel);
+  const ingA = D.cobros.filter(c=>enPeriodo(aFecha(c.fecha)));
   const varA = gAnio.filter(g=>!esGastoFijo(g));
   const fijA = gAnio.filter(esGastoFijo);
   const suma = l => l.reduce((a,x)=>a+(x.importe||0),0);
@@ -1551,7 +1574,7 @@ function vistaDinero(){
   ];
   if(!LISTAS.some(p=>p.id===listaSel)) listaSel='ing';
 
-  h += `<div class="cab" style="margin-top:34px"><h2>Movimientos de ${anioSel}</h2></div>
+  h += `<div class="cab" style="margin-top:34px"><h2>Movimientos · ${esc(etPer)}</h2></div>
     <nav class="subtabs">` + LISTAS.map(p=>`
       <button class="subtab${p.id===listaSel?' on':''}" data-lista="${p.id}">
         <b>${p.n}</b><em>${eur(p.total)} €</em></button>`).join('') + `</nav>`;
@@ -1572,7 +1595,7 @@ function vistaDinero(){
   if(listaSel==='ing'){
     h += bloqueMovs({
       lista: ingA, titulo:'Ingresos', id:'ing',
-      vacio:`Sin ingresos en ${anioSel}.`,
+      vacio:`Sin ingresos en este periodo.`,
       acciones:`<button class="btn mini" data-acc="ingreso">+ Ingreso</button>
         <input class="buscar" id="q-ing" placeholder="Buscar por concepto…" autocomplete="off">`,
       fila: c=>`<tr data-i="${c.id}" data-q="${esc((c.concepto||'').toLowerCase())}" style="cursor:pointer">
@@ -1586,7 +1609,7 @@ function vistaDinero(){
   if(listaSel==='var'){
     h += bloqueMovs({
       lista: varA, titulo:'Gastos variables', id:'var', fila:filaGasto,
-      vacio:`Sin gastos variables en ${anioSel}.`,
+      vacio:`Sin gastos variables en este periodo.`,
       acciones:`<button class="btn mini" data-acc="gasto">+ Gasto</button>
         <input class="buscar" id="q-gas" placeholder="Buscar por concepto…" autocomplete="off">`});
   }
@@ -1594,7 +1617,7 @@ function vistaDinero(){
   if(listaSel==='fij'){
     h += bloqueMovs({
       lista: fijA, titulo:'Gastos fijos', id:'fij', fila:filaGasto,
-      vacio:`Sin gastos fijos en ${anioSel}.`,
+      vacio:`Sin gastos fijos en este periodo.`,
       acciones:`<button class="btn mini" data-acc="fijo">+ Plantilla</button>
         <button class="btn mini" data-acc="generar">Generar los de este mes</button>
         ${D.fijos.length?`<button class="btn mini" data-acc="verplantillas">${
@@ -1701,13 +1724,9 @@ function abrirFactura(id){
   lineasF = (f.lineas||[]).map(l=>({...l}));
   if(!lineasF.length) lineasF.push({desc:'', cantidad:1, precio:0});
 
-  /* Las fichas mandan, pero también se ofrecen los nombres que sólo
-     aparecen en trabajos o en facturas ya emitidas. */
   const nombres = [...new Set(D.clientes.map(c=>c.nombre)
-    .concat(facturas().map(x=>x.cliente))
     .concat(D.trabajos.map(t=>t.cliente)))].filter(Boolean).sort();
   const coches = [...new Set(D.clientes.flatMap(c=>(c.vehiculos||[]).map(v=>v.modelo))
-    .concat(facturas().map(x=>x.vehiculo))
     .concat(D.trabajos.map(t=>t.coche)))].filter(Boolean).sort();
 
   $('#hojaC').innerHTML = `<h3>${editF2?'Editar factura':'Nueva factura'}</h3>
@@ -1718,8 +1737,8 @@ function abrirFactura(id){
         <input type="date" id="f-fec" value="${f.fecha}"></div></div>
 
     <div class="campo"><label for="f-cli">Cliente</label>
-      <input id="f-cli" value="${esc(f.cliente)}" placeholder="Nombre o empresa" autocomplete="off">
-      <div class="f-hint" id="f-hint"></div></div>
+      <input id="f-cli" list="lista-fcli" value="${esc(f.cliente)}" placeholder="Nombre o empresa" autocomplete="off">
+      <datalist id="lista-fcli">${nombres.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
     <div class="fila2">
       <div class="campo"><label for="f-nif">NIF / CIF</label>
         <input id="f-nif" value="${esc(f.clienteNif)}" placeholder="B-12345678" autocomplete="off"></div>
@@ -1738,7 +1757,8 @@ function abrirFactura(id){
 
     <div class="fila2">
       <div class="campo"><label for="f-veh">Vehículo</label>
-        <input id="f-veh" value="${esc(f.vehiculo)}" placeholder="Ferrari Purosangue" autocomplete="off"></div>
+        <input id="f-veh" list="lista-fveh" value="${esc(f.vehiculo)}" placeholder="Ferrari Purosangue" autocomplete="off">
+        <datalist id="lista-fveh">${coches.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
       <div class="campo"><label for="f-mat">Matrícula</label>
         <input id="f-mat" value="${esc(f.matricula)}" placeholder="opcional" autocomplete="off"></div></div>
 
@@ -1751,116 +1771,18 @@ function abrirFactura(id){
   $('#hoja').classList.add('on');
   $('#f-cli').focus();
 
-  /* Al escribir el cliente se rellenan sus datos fiscales desde su ficha:
-     evita teclear el NIF cada vez. Solo se rellena cuando el cliente
-     detectado cambia, para no pisar lo que se esté editando a mano. */
-  let fichaPuesta = normNom(f.cliente);
-
-  function clienteActual(){
+  /* Al escribir el cliente se rellenan sus datos fiscales si ya están
+     en su ficha: evita teclear el NIF cada vez. */
+  $('#f-cli').addEventListener('change',()=>{
     const n = normNom($('#f-cli').value);
-    return n ? D.clientes.find(x=>normNom(x.nombre)===n) : null;
-  }
-
-  /* «magna» tiene que encontrar a «Magna Super Cars S.L». Primero se busca
-     coincidencia exacta; si no la hay, un único nombre que empiece igual. */
-  function resolverNombre(txt, permitirParcial){
-    const n = normNom(txt); if(!n) return null;
-    const exacto = nombres.find(x=>normNom(x)===n);
-    if(exacto) return exacto;
-    if(!permitirParcial || n.length<3) return null;
-    const cand = nombres.filter(x=>normNom(x).startsWith(n));
-    return cand.length===1 ? cand[0] : null;
-  }
-
-  /* Última factura emitida a ese nombre. Es el respaldo para los clientes
-     que todavía no tienen ficha: los datos ya se escribieron una vez. */
-  function ultimaFacturaDe(n){
-    return facturas()
-      .filter(x=>normNom(x.cliente)===n && x.id!==(editF2&&editF2.id))
-      .sort((a,b)=> a.fecha<b.fecha?1 : a.fecha>b.fecha?-1 : (+b.numero)-(+a.numero))[0];
-  }
-
-  /* La ficha manda; lo que le falte se completa con la última factura. */
-  function datosDe(nombre){
-    const n = normNom(nombre);
     const c = D.clientes.find(x=>normNom(x.nombre)===n);
-    const u = ultimaFacturaDe(n);
-    if(!c && !u) return null;
-    return {
-      nif:    (c&&c.nif)       || (u&&u.clienteNif)    || '',
-      dir:    (c&&c.direccion) || (u&&u.clienteDir)    || '',
-      ciudad: (c&&c.ciudad)    || (u&&u.clienteCiudad) || '',
-      cp:     (c&&c.cp)        || (u&&u.clienteCp)     || '',
-      ue:     c ? !!c.intraUE  : !!(u&&u.intraUE),
-      ficha:  c || null,
-      origen: (c && c.nif) ? 'su ficha de cliente' : (u ? `la factura ${u.numero}` : 'su ficha')
-    };
-  }
-
-  /* Los coches del cliente van primero en la lista; detrás, el resto del
-     taller por si el coche entró antes a nombre de otro. */
-  let fichaEnUso = clienteActual();
-  const opcionesCoche = ()=>{
-    const suyos = ((fichaEnUso&&fichaEnUso.vehiculos)||[]).map(v=>v.modelo).filter(Boolean);
-    const resto = coches.filter(m=>!suyos.some(s=>normNom(s)===normNom(m)));
-    return suyos.map(m=>({valor:m, meta:'de este cliente'})).concat(resto);
-  };
-  const opcionesCliente = ()=> nombres.map(n=>{
-    const d = datosDe(n);
-    return {valor:n, meta: d && d.nif ? `NIF ${d.nif}` : ''};
+    if(!c) return;
+    if(c.nif) $('#f-nif').value = c.nif;
+    if(c.direccion) $('#f-dir').value = c.direccion;
+    if(c.ciudad) $('#f-ciu').value = c.ciudad;
+    if(c.cp) $('#f-cp').value = c.cp;
+    if(c.intraUE) $('#f-ue').value = '1';
   });
-
-  function autoRellenar(permitirParcial){
-    const nombre = resolverNombre($('#f-cli').value, permitirParcial);
-    if(!nombre){
-      /* Si lo escrito encaja con varios clientes no se puede adivinar, pero
-         hay que decirlo: si no, el campo se queda a medias en silencio. */
-      const n = normNom($('#f-cli').value);
-      const h = $('#f-hint');
-      if(permitirParcial && h && n.length>=3){
-        const cand = nombres.filter(x=>normNom(x).startsWith(n));
-        if(cand.length>1){
-          h.textContent = `Hay ${cand.length} clientes que empiezan por «${$('#f-cli').value.trim()}». Elegí uno de la lista.`;
-          h.classList.add('on');
-        }
-      }
-      return;
-    }
-    const n = normNom(nombre);
-    if(n === fichaPuesta) return;
-    const d = datosDe(nombre);
-    if(!d) return;
-    fichaPuesta = n;
-    /* Al completar a medias («magna» → «Magna Super Cars S.L») se corrige
-       el nombre: en la factura tiene que ir la razón social entera. */
-    if(permitirParcial) $('#f-cli').value = nombre;
-    if(d.nif)    $('#f-nif').value = d.nif;
-    if(d.dir)    $('#f-dir').value = d.dir;
-    if(d.ciudad) $('#f-ciu').value = d.ciudad;
-    if(d.cp)     $('#f-cp').value  = d.cp;
-    $('#f-ue').value = d.ue ? '1' : '0';
-    fichaEnUso = d.ficha;
-    pintarTotales();
-    const h = $('#f-hint');
-    if(h){ h.textContent = `Datos traídos de ${d.origen}`; h.classList.add('on'); }
-  }
-  autocompletar($('#f-cli'), opcionesCliente, ()=>autoRellenar(true));
-  autocompletar($('#f-veh'), opcionesCoche, ()=>ponerMatricula());
-  $('#f-cli').addEventListener('input',  ()=>autoRellenar(false));
-  $('#f-cli').addEventListener('change', ()=>autoRellenar(true));
-  /* Sin retardo: al pulsar una sugerencia el mousedown cancela el blur, así
-     que aquí sólo llegamos cuando el campo se abandona de verdad. Con retardo,
-     darle a «Guardar» justo después de teclear guardaba «mag» a medias. */
-  $('#f-cli').addEventListener('blur',   ()=>autoRellenar(true));
-
-  /* Si el coche ya está en la ficha del cliente, la matrícula sale sola. */
-  function ponerMatricula(){
-    if($('#f-mat').value.trim()) return;
-    const v = ((fichaEnUso&&fichaEnUso.vehiculos)||[])
-      .find(x=>normNom(x.modelo)===normNom($('#f-veh').value));
-    if(v && v.matricula) $('#f-mat').value = v.matricula;
-  }
-  $('#f-veh').addEventListener('change', ponerMatricula);
 
   function pintarLineas(){
     const cont=$('#f-lineas'); if(!cont) return;
@@ -1923,46 +1845,11 @@ function abrirFactura(id){
     let destino;
     if(editF2){ Object.assign(editF2, d); destino = editF2; }
     else { destino = Object.assign({id:nid()}, d); D.facturas.push(destino); }
-    fijarFicha(d);
     cerrar(); guardar(); pintar();
     verFactura(destino.id);
   });
 
 
-}
-
-/* Al guardar una factura, sus datos fiscales quedan pegados a la ficha del
-   cliente. Si el cliente todavía no tenía ficha, se le crea una. Así la
-   próxima factura a ese mismo nombre sale rellena sola y el NIF se teclea
-   una única vez en la vida. Lo que va vacío en la factura no borra lo que
-   ya hubiera guardado. */
-function fijarFicha(d){
-  const n = normNom(d.cliente);
-  if(!n) return null;
-
-  let c = D.clientes.find(x=>normNom(x.nombre)===n);
-  if(!c){
-    c = {id:nid(), nombre:d.cliente, telefono:'', vehiculos:[], coches:'',
-         idioma:'es', notas:'', nif:'', direccion:'', ciudad:'', cp:'', intraUE:false};
-    D.clientes.push(c);
-  }
-
-  if(d.clienteNif)    c.nif       = d.clienteNif;
-  if(d.clienteDir)    c.direccion = d.clienteDir;
-  if(d.clienteCiudad) c.ciudad    = d.clienteCiudad;
-  if(d.clienteCp)     c.cp        = d.clienteCp;
-  c.intraUE = !!d.intraUE;
-
-  /* El coche se suma al historial del cliente. No se duplica: si ya estaba,
-     como mucho se le completa la matrícula. */
-  if(d.vehiculo){
-    if(!Array.isArray(c.vehiculos)) c.vehiculos = [];
-    const ya = c.vehiculos.find(v=>normNom(v.modelo)===normNom(d.vehiculo));
-    if(ya){ if(d.matricula && !ya.matricula) ya.matricula = d.matricula; }
-    else c.vehiculos.push({id:nid(), modelo:d.vehiculo, matricula:d.matricula||'', color:''});
-    c.coches = c.vehiculos.map(v=>v.modelo).join(', ');
-  }
-  return c;
 }
 
 /* Rectificar = emitir una factura de abono: los mismos conceptos en
@@ -2291,122 +2178,6 @@ function htmlFactura(f){
 const normNom = s => String(s||'').trim().toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
 
-/* Lista de sugerencias propia. Sustituye al <datalist>, que en algunos
-   navegadores se pintaba en blanco sobre blanco y no se leía nada.
-   `opciones` puede ser un array o una función que devuelve el array, y
-   cada opción es un texto o {valor, meta}. */
-function autocompletar(inp, opciones, alElegir){
-  if(!inp) return;
-  const caja = document.createElement('div');
-  caja.className = 'sug';
-  inp.parentNode.appendChild(caja);
-  let vis = [], idx = -1;
-
-  const cerrarSug = ()=>{ caja.classList.remove('on'); caja.innerHTML=''; vis=[]; idx=-1; };
-  const valorDe = o => typeof o==='string' ? o : o.valor;
-
-  function pintarSug(){
-    const q = normNom(inp.value);
-    const todas = (typeof opciones==='function' ? opciones() : opciones) || [];
-    vis = todas.filter(o=>{
-      const n = normNom(valorDe(o));
-      return n && (!q || n.includes(q));
-    }).slice(0, 8);
-    // Si ya está escrito el nombre entero, la lista sobra.
-    if(!vis.length || (vis.length===1 && normNom(valorDe(vis[0]))===q)) return cerrarSug();
-    caja.innerHTML = vis.map((o,i)=>{
-      const m = typeof o==='object' && o.meta ? `<span class="meta">${esc(o.meta)}</span>` : '';
-      return `<button type="button" data-i="${i}">${esc(valorDe(o))}${m}</button>`;
-    }).join('');
-    caja.style.top = (inp.offsetTop + inp.offsetHeight) + 'px';
-    caja.classList.remove('arriba');
-    caja.classList.add('on');
-    /* Si el campo está al final de la hoja, la lista se abre hacia arriba:
-       si no, queda cortada por el borde y no se puede elegir. */
-    const cont = inp.closest('.hoja-c');
-    if(cont){
-      const rI = inp.getBoundingClientRect(), rC = cont.getBoundingClientRect();
-      if(rI.bottom + caja.offsetHeight > rC.bottom - 8
-         && rI.top - caja.offsetHeight > rC.top + 8){
-        caja.style.top = (inp.offsetTop - caja.offsetHeight) + 'px';
-        caja.classList.add('arriba');
-      }
-    }
-    idx = -1;
-    // mousedown y no click: si esperamos al click, el blur del input cierra
-    // la lista antes de que llegue.
-    caja.querySelectorAll('button').forEach(b=>b.addEventListener('mousedown', e=>{
-      e.preventDefault(); elegir(vis[+b.dataset.i]);
-    }));
-  }
-
-  function elegir(o){
-    if(o===undefined) return;
-    inp.value = valorDe(o);
-    cerrarSug();
-    inp.dispatchEvent(new Event('input', {bubbles:true}));
-    if(alElegir) alElegir(valorDe(o));
-  }
-
-  inp.addEventListener('input', pintarSug);
-  inp.addEventListener('focus', pintarSug);
-  inp.addEventListener('blur', ()=>setTimeout(cerrarSug, 150));
-  inp.addEventListener('keydown', e=>{
-    if(!caja.classList.contains('on')){
-      if(e.key==='ArrowDown') pintarSug();
-      return;
-    }
-    const bs = [...caja.querySelectorAll('button')];
-    if(e.key==='ArrowDown' || e.key==='ArrowUp'){
-      e.preventDefault();
-      idx = e.key==='ArrowDown' ? Math.min(idx+1, bs.length-1) : Math.max(idx-1, 0);
-      bs.forEach((b,i)=>b.classList.toggle('sel', i===idx));
-      bs[idx].scrollIntoView({block:'nearest'});
-    } else if(e.key==='Enter' && idx>=0){
-      e.preventDefault(); elegir(vis[idx]);
-    } else if(e.key==='Escape'){ cerrarSug(); }
-  });
-  return {cerrar:cerrarSug, pintar:pintarSug};
-}
-
-/* Absorbe un cliente dentro de otro: los trabajos y las facturas del que
-   sobra pasan a apuntar a la ficha buena, sus coches se suman y la ficha
-   duplicada desaparece. Los cobros van colgados del trabajo, así que se
-   arrastran solos. */
-function unificarCliente(destino, nombreOrigen){
-  const o = normNom(nombreOrigen), d = normNom(destino.nombre);
-  if(!o || o===d) return null;
-
-  let trab = 0, fact = 0;
-  D.trabajos.forEach(t=>{ if(normNom(t.cliente)===o){ t.cliente = destino.nombre; trab++; } });
-  (D.facturas||[]).forEach(f=>{ if(normNom(f.cliente)===o){ f.cliente = destino.nombre; fact++; } });
-
-  if(!Array.isArray(destino.vehiculos)) destino.vehiculos = [];
-  const sumarCoche = (modelo, matricula)=>{
-    if(!modelo) return;
-    const ya = destino.vehiculos.find(v=>normNom(v.modelo)===normNom(modelo));
-    if(ya){ if(matricula && !ya.matricula) ya.matricula = matricula; }
-    else destino.vehiculos.push({id:nid(), modelo, matricula:matricula||'', color:''});
-  };
-
-  const otra = D.clientes.find(c=>normNom(c.nombre)===o);
-  if(otra){
-    // Lo que la ficha buena tenga vacío se hereda de la que se absorbe.
-    ['telefono','nif','direccion','ciudad','cp','notas','idioma'].forEach(k=>{
-      if(!destino[k] && otra[k]) destino[k] = otra[k];
-    });
-    (otra.vehiculos||[]).forEach(v=>sumarCoche(v.modelo, v.matricula));
-    borrarDoc('clientes', otra.id);
-    D.clientes = D.clientes.filter(c=>c.id!==otra.id);
-  }
-
-  // Los coches que sólo existían en los trabajos también entran en la ficha.
-  D.trabajos.forEach(t=>{ if(normNom(t.cliente)===d) sumarCoche(t.coche, ''); });
-  destino.coches = destino.vehiculos.map(v=>v.modelo).join(', ');
-
-  return {trabajos:trab, facturas:fact, tenia:!!otra};
-}
-
 /** Une la ficha del cliente con lo que dicen sus trabajos. */
 function clientesConHistorial(){
   const mapa = new Map();
@@ -2508,22 +2279,6 @@ function abrirCliente(id, nombre){
         </div>`).join('') + `</div>`;
   }
 
-  /* Candidatos a unificar: cualquier otro cliente del sistema, tenga ficha
-     propia o exista sólo dentro de los trabajos. Sólo con la ficha ya
-     guardada, porque hace falta un destino de verdad al que mover todo. */
-  const unificables = !editC ? [] : (()=>{
-    const base = clientesConHistorial()
-      .map(x=>({nombre:x.nombre, n:x.trabajos.length, ficha:x.ficha}));
-    // Nombres que sólo existen en facturas y por tanto no salen del historial.
-    const vistos = new Set(base.map(x=>normNom(x.nombre)));
-    facturas().forEach(f=>{
-      const k = normNom(f.cliente);
-      if(k && !vistos.has(k)){ vistos.add(k); base.push({nombre:f.cliente, n:0, ficha:false}); }
-    });
-    return base.filter(x=>normNom(x.nombre) !== normNom(c.nombre))
-               .sort((a,b)=>b.n-a.n);
-  })();
-
   $('#hojaC').innerHTML = `<h3>${editC?'Editar cliente':'Nuevo cliente'}</h3>
     <div class="campo"><label for="cl-nom">Nombre</label>
       <input id="cl-nom" value="${esc(c.nombre)}" placeholder="Nombre del cliente" autocomplete="off"></div>
@@ -2557,17 +2312,6 @@ function abrirCliente(id, nombre){
         </select></div>
     </div>
     ${hist}
-    ${unificables.length?`<div class="sep-fis">Unificar clientes</div>
-      <p class="mini-nota" style="margin:0 0 9px">Si el mismo cliente quedó cargado con
-      dos nombres distintos, elegí el que sobra: sus trabajos, cobros, facturas y coches
-      pasan a esta ficha y el duplicado desaparece.</p>
-      <div class="mini-form" style="grid-template-columns:1fr auto">
-        <select id="cl-uni">
-          <option value="">Elegir cliente a absorber…</option>
-          ${unificables.map(u=>`<option value="${esc(u.nombre)}">${esc(u.nombre)} · ${u.n} trabajo${u.n===1?'':'s'}${u.ficha?' · con ficha':''}</option>`).join('')}
-        </select>
-        <button class="btn mini" id="cl-uni-ok" type="button">Unificar</button>
-      </div>`:''}
     <div class="acc">
       <button class="btn" type="button" data-cerrar>Cancelar</button>
       ${editC?`<button class="btn borrar" type="button" id="cl-del">Eliminar</button>`:''}
@@ -2605,43 +2349,17 @@ function abrirCliente(id, nombre){
   }
   pintarCoches();
 
-  /* Vuelca la hoja sobre la ficha. Devuelve false si falta el nombre. */
-  function guardarFichaCliente(){
+  $('#cl-ok').addEventListener('click',()=>{
     const d={nombre:$('#cl-nom').value.trim(), telefono:$('#cl-tel').value.trim(),
       vehiculos:coches, coches:coches.map(v=>v.modelo).join(', '),
       idioma:$('#cl-idi').value, notas:$('#cl-not').value.trim(),
       nif:$('#cl-nif').value.trim(), direccion:$('#cl-dir').value.trim(),
       ciudad:$('#cl-ciu').value.trim(), cp:$('#cl-cp').value.trim(),
       intraUE:$('#cl-ue').value==='1'};
-    if(!d.nombre){ $('#cl-nom').focus(); return false; }
-    if(editC) Object.assign(editC,d);
-    else { editC = Object.assign({id:nid()},d); D.clientes.push(editC); }
-    return true;
-  }
-
-  $('#cl-ok').addEventListener('click',()=>{
-    if(!guardarFichaCliente()) return;
+    if(!d.nombre){ $('#cl-nom').focus(); return; }
+    if(editC) Object.assign(editC,d); else D.clientes.push(Object.assign({id:nid()},d));
     cerrar(); guardar(); pintar();
   });
-  const uniOk = $('#cl-uni-ok');
-  if(uniOk) uniOk.addEventListener('click',()=>{
-    const origen = $('#cl-uni').value;
-    if(!origen) return;
-    if(!confirm(`Vas a pasar todo lo de «${origen}» a «${$('#cl-nom').value.trim()}».\n\n`
-      + `Sus trabajos, cobros, facturas y coches quedan en esta ficha y «${origen}» `
-      + `desaparece. Esto no se puede deshacer.\n\n¿Seguimos?`)) return;
-    /* Se guarda primero lo que esté escrito en la hoja: si no, la unificación
-       trabaja sobre la ficha vieja y se pierde lo tecleado. */
-    if(!guardarFichaCliente()) return;
-    const r = unificarCliente(editC, origen);
-    if(!r) return;
-    guardar(); pintar();
-    alert(`«${origen}» quedó unificado en «${editC.nombre}».\n\n`
-      + `${r.trabajos} trabajo${r.trabajos===1?'':'s'} y ${r.facturas} factura${r.facturas===1?'':'s'} `
-      + `pasaron a esta ficha${r.tenia?', y la ficha duplicada se eliminó':''}.`);
-    abrirCliente(editC.id);          // se reabre para ver los coches ya sumados
-  });
-
   const del=$('#cl-del'); if(del) del.addEventListener('click',()=>{
     borrarDoc('clientes', editC.id); D.clientes=D.clientes.filter(x=>x.id!==editC.id); cerrar(); guardar(); pintar();
   });
@@ -2756,9 +2474,19 @@ function abrirTrabajo(id, previo){
 
   $('#hojaC').innerHTML = `<h3>${editT?'Editar trabajo':'Nuevo trabajo'}</h3>
     <div class="campo"><label for="t-coche">Coche</label>
-      <input id="t-coche" value="${esc(t.coche)}" placeholder="Porsche Cayenne 2021" autocomplete="off"></div>
+      <input id="t-coche" list="lista-coche" value="${esc(t.coche)}" placeholder="Porsche Cayenne 2021" autocomplete="off">
+      <datalist id="lista-coche">${
+        [...new Set(
+          D.clientes.flatMap(c=>(c.vehiculos||[]).map(v=>v.modelo))
+            .concat(D.trabajos.map(x=>x.coche))
+        )].filter(Boolean).sort().map(n=>`<option value="${esc(n)}">`).join('')
+      }</datalist></div>
     <div class="campo"><label for="t-cli">Cliente</label>
-      <input id="t-cli" value="${esc(t.cliente)}" placeholder="Nombre o teléfono" autocomplete="off"></div>
+      <input id="t-cli" list="lista-cli" value="${esc(t.cliente)}" placeholder="Nombre o teléfono" autocomplete="off">
+      <datalist id="lista-cli">${
+        [...new Set(D.clientes.map(c=>c.nombre).concat(D.trabajos.map(x=>x.cliente)))]
+          .filter(Boolean).sort().map(n=>`<option value="${esc(n)}">`).join('')
+      }</datalist></div>
     <div class="campo"><label for="t-serv">Servicio</label>
       <select id="t-serv">${servicios().map(s=>`<option${s.n===t.servicio?' selected':''}>${s.n}</option>`).join('')}</select></div>
     <div class="fila2">
@@ -2785,22 +2513,6 @@ function abrirTrabajo(id, previo){
 
   $('#hoja').classList.add('on');
   $('#t-coche').focus();
-
-  /* Sugerencias de coche y cliente. Al elegir un cliente, sus coches pasan
-     al principio de la lista de coches. */
-  const nomsT = ()=>[...new Set(D.clientes.map(c=>c.nombre)
-    .concat(facturas().map(x=>x.cliente))
-    .concat(D.trabajos.map(x=>x.cliente)))].filter(Boolean).sort();
-  const cochesT = ()=>{
-    const c = D.clientes.find(x=>normNom(x.nombre)===normNom($('#t-cli').value));
-    const suyos = ((c&&c.vehiculos)||[]).map(v=>v.modelo).filter(Boolean);
-    const resto = [...new Set(D.clientes.flatMap(x=>(x.vehiculos||[]).map(v=>v.modelo))
-      .concat(D.trabajos.map(x=>x.coche)))].filter(Boolean).sort()
-      .filter(m=>!suyos.some(s=>normNom(s)===normNom(m)));
-    return suyos.map(m=>({valor:m, meta:'de este cliente'})).concat(resto);
-  };
-  autocompletar($('#t-coche'), cochesT);
-  autocompletar($('#t-cli'), nomsT);
 
   /* Materiales usados en este coche. Se restan del presupuesto para ver
      el margen; no se suman a los gastos, que ya los recoge la caja. */
@@ -2942,16 +2654,17 @@ function guardarTrabajo(){
    Un toque abre el panel de acciones; si se arrastra, se mueve de día o
    de plaza. Se distingue por la distancia recorrida, así que en la tablet
    un toque sigue siendo un toque.
-   Regla de oro: lo que se ve mientras se arrastra es exactamente lo que se
-   guarda al soltar. Antes la vista previa saltaba por altura de fila y el
-   destino se decidía por el elemento bajo el dedo; cuando las dos cuentas
-   no coincidían, la barra caía en otra plaza.                          */
-function montarArrastre(el){
-  let t0=null, x0=0, y0=0, moviendo=false, modo='mover',
-      anchoDia=0, pistas=[], pistaIni=null, destino=null, base=null, col0=0, nCel=1;
+   La pista mide siempre 7 columnas, así que el día bajo el dedo sale de
+   la proporción, no de un ancho fijo en píxeles.                      */
+function diaEnPista(pista, clientX){
+  const r = pista.getBoundingClientRect();
+  const col = Math.max(0, Math.min(6, Math.floor(((clientX - r.left) / r.width) * 7)));
+  return sumar(aFecha(pista.dataset.lunes), col);
+}
 
-  const limpiar = ()=> document.querySelectorAll('.rej-cel.destino')
-    .forEach(c=>c.classList.remove('destino'));
+function montarArrastre(el){
+  let t0=null, x0=0, y0=0, origen=null, moviendo=false, modo='mover',
+      anchoDia=0, altoFila=0, base=null, tactil=false, armado=false, espera=null;
 
   el.addEventListener('pointerdown', ev=>{
     if(ev.button !== undefined && ev.button !== 0) return;
@@ -2959,96 +2672,83 @@ function montarArrastre(el){
     if(!t0) return;
     const pista = el.closest('.rej-pista');
     if(!pista) return;
+    /* Con el dedo hay que mantener pulsado medio segundo antes de poder
+       arrastrar. Si no, cualquier roce al desplazar la página movía un
+       coche de fecha. Con ratón engancha al momento, como siempre. */
+    tactil = ev.pointerType === 'touch';
+    armado = !tactil;
+    clearTimeout(espera);
+    if(tactil){
+      espera = setTimeout(()=>{
+        armado = true;
+        el.classList.add('listo');
+        if(navigator.vibrate) navigator.vibrate(12);   // avisa de que ya engancha
+      }, 450);
+    }
     // Los extremos estiran la estancia; el centro mueve el coche de sitio.
     modo = (ev.target && ev.target.dataset && ev.target.dataset.tira) || 'mover';
     x0=ev.clientX; y0=ev.clientY;
-
-    /* Se miden todas las pistas al empezar el arrastre. Durante el gesto no
-       se repinta nada, así que estas medidas siguen valiendo y el destino se
-       calcula siempre contra la misma referencia. */
-    pistas = [...document.querySelectorAll('.rej-pista[data-plaza]')].map(p=>({
-      el:p, plaza:+p.dataset.plaza, lunes:p.dataset.lunes, r:p.getBoundingClientRect()
-    }));
-    pistaIni = pistas.find(p=>p.el===pista);
-    if(!pistaIni){ t0=null; return; }
-
-    anchoDia = pistaIni.r.width/7;
-    if(!(anchoDia > 0)){ t0=null; return; }   // pista sin medida: no se arrastra
+    origen = diaEnPista(pista, ev.clientX);
+    anchoDia = pista.getBoundingClientRect().width / 7;
+    altoFila = (el.closest('.rej-fila')||pista).getBoundingClientRect().height;
     base = {left: el.offsetLeft, width: el.offsetWidth};
-    col0 = Math.round(base.left/anchoDia) || 0;            // día en que empieza la barra
-    nCel = Math.max(1, Math.round(base.width/anchoDia) || 1); // días que ocupa esta semana
-    destino=null; moviendo=false;
+    moviendo=false;
     el.setPointerCapture(ev.pointerId);
   });
-
-  /* Fila que hay bajo el dedo. Si cae justo en el hueco entre dos semanas se
-     coge la más cercana, para que soltar ahí no anule el movimiento. */
-  function pistaBajo(y){
-    return pistas.find(p=> y>=p.r.top && y<=p.r.bottom)
-      || pistas.reduce((a,b)=> Math.abs(y-(b.r.top+b.r.bottom)/2)
-                             < Math.abs(y-(a.r.top+a.r.bottom)/2) ? b : a, pistas[0]);
-  }
-
-  /* Pinta en dorado las casillas exactas donde va a caer la barra. */
-  function marcar(p, desde, cuantas){
-    limpiar();
-    const n = Math.max(1, cuantas===undefined ? nCel : cuantas);
-    const cels = p.el.querySelectorAll('.rej-cel');
-    for(let i=desde; i<desde+n; i++) if(cels[i]) cels[i].classList.add('destino');
-  }
 
   el.addEventListener('pointermove', ev=>{
     if(!t0) return;
     const dx=ev.clientX-x0, dy=ev.clientY-y0;
+    // Si el dedo se mueve antes de tiempo, es un desplazamiento de página:
+    // se cancela la espera y no se arrastra nada.
+    if(!armado){
+      if(Math.abs(dx) > 8 || Math.abs(dy) > 8){ clearTimeout(espera); t0=null; }
+      return;
+    }
     // Umbral alto: en una tablet el dedo nunca está quieto del todo.
     if(!moviendo && Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
     moviendo=true;
     ev.preventDefault();
     el.classList.add('arrastrando');
 
-    const salto = Math.round(dx/anchoDia);
-
-    if(modo!=='mover'){
-      destino = {salto};
+    /* La vista previa se pega a la rejilla: salta de día en día en vez de
+       seguir al píxel. Así se ve exactamente dónde va a caer y no da la
+       sensación de que se mueve solo. */
+    if(modo==='mover'){
+      const saltoX = Math.round(dx/anchoDia)*anchoDia;
+      const saltoY = Math.round(dy/altoFila)*altoFila;
+      el.style.transform = `translate(${saltoX}px, ${saltoY}px)`;
+    }else{
+      const salto = Math.round(dx/anchoDia)*anchoDia;
       if(modo==='der'){
-        el.style.width = Math.max(anchoDia-6, base.width+salto*anchoDia)+'px';
-        marcar(pistaIni, col0, nCel+salto);
+        el.style.width = Math.max(anchoDia-6, base.width+salto)+'px';
       }else{
-        const w = Math.max(anchoDia-6, base.width-salto*anchoDia);
+        const w = Math.max(anchoDia-6, base.width-salto);
         el.style.left = (base.left + (base.width-w))+'px';
         el.style.width = w+'px';
-        marcar(pistaIni, col0+Math.min(salto, nCel-1), nCel-salto);
       }
-      return;
     }
-
-    /* Un único cálculo, que es a la vez lo que se dibuja y lo que se guarda
-       al soltar. La barra se pega a la fila destino, así que cae exactamente
-       donde se la ve: no hay forma de que el resultado sorprenda. */
-    const p = pistaBajo(ev.clientY);
-    destino = {salto, plaza:p.plaza,
-               dias: diasEntre(aFecha(pistaIni.lunes), aFecha(p.lunes)) + salto};
-    el.style.transform = `translate(${salto*anchoDia}px, ${p.r.top - pistaIni.r.top}px)`;
-    marcar(p, col0+salto);
   });
 
-  el.addEventListener('pointerup', ()=>{
-    if(!t0) return;
-    const trabajo=t0, d=destino, m=modo, movido=moviendo;
-    t0=null; destino=null; moviendo=false;
+  el.addEventListener('pointerup', ev=>{
+    clearTimeout(espera);
+    el.classList.remove('listo');
+    if(!t0){ if(!moviendo) abrirAcciones(el.dataset.t); return; }
+    const trabajo=t0, desdeDia=origen;
+    t0=null;
     el.classList.remove('arrastrando');
     el.style.transform=''; el.style.width=''; el.style.left='';
-    limpiar();
 
-    if(!movido || !d){ abrirAcciones(el.dataset.t); return; }
+    if(!moviendo){ abrirAcciones(el.dataset.t); return; }
 
     // ── estirar por un extremo ──
-    if(m!=='mover'){
-      if(d.salto!==0){
-        if(m==='der'){
-          trabajo.dias = Math.max(1, trabajo.dias + d.salto);
+    if(modo!=='mover'){
+      const salto = Math.round((ev.clientX-x0)/anchoDia);
+      if(salto!==0){
+        if(modo==='der'){
+          trabajo.dias = Math.max(1, trabajo.dias + salto);
         }else{
-          const nuevos = Math.max(1, trabajo.dias - d.salto);
+          const nuevos = Math.max(1, trabajo.dias - salto);
           trabajo.entra = aIso(sumar(aFecha(trabajo.entra), trabajo.dias - nuevos));
           trabajo.dias = nuevos;
         }
@@ -3061,25 +2761,35 @@ function montarArrastre(el){
       pintar(); return;
     }
 
-    // ── mover de día o de plaza ──
-    if(d.dias===0 && d.plaza===trabajo.plaza){ pintar(); return; }   // se quedó donde estaba
+    /* El día destino se calcula por el desplazamiento redondeado, no por
+       dónde quedó el dedo: el dedo tapa la barra y siempre cae un poco
+       corrido. Así soltar en mitad de una casilla no cambia el resultado. */
+    const salto = Math.round((ev.clientX - x0)/anchoDia);
 
-    const nuevaEntra = aIso(sumar(aFecha(trabajo.entra), d.dias));
-    const choca = pisaA({...trabajo, plaza:d.plaza}, nuevaEntra, trabajo.dias);
+    el.style.pointerEvents='none';
+    const bajo = document.elementFromPoint(ev.clientX, ev.clientY);
+    el.style.pointerEvents='';
+    const pista = bajo && bajo.closest ? bajo.closest('.rej-pista') : null;
+    if(!pista) { pintar(); return; }
+
+    const nuevaPlaza = +pista.dataset.plaza;
+    if(salto===0 && nuevaPlaza===trabajo.plaza) return;      // no se movió
+
+    const nuevaEntra = aIso(sumar(aFecha(trabajo.entra), salto));
+    const choca = pisaA({...trabajo, plaza:nuevaPlaza}, nuevaEntra, trabajo.dias);
     if(choca.length && !confirm(
         `Ahí ya está ${choca.map(o=>o.coche).join(' y ')}.\n¿Lo pones igual?`)){
       pintar(); return;
     }
     trabajo.entra = nuevaEntra;
-    trabajo.plaza = d.plaza;
+    trabajo.plaza = nuevaPlaza;
     guardar(); pintar();
   });
 
   el.addEventListener('pointercancel', ()=>{
-    t0=null; destino=null; moviendo=false;
-    el.classList.remove('arrastrando');
+    clearTimeout(espera); t0=null;
+    el.classList.remove('arrastrando'); el.classList.remove('listo');
     el.style.transform=''; el.style.width=''; el.style.left='';
-    limpiar();
   });
 }
 
@@ -3629,7 +3339,9 @@ function pintar(){
   c.querySelectorAll('tr[data-t]').forEach(r=>r.addEventListener('click',()=>abrirTrabajo(r.dataset.t)));
   c.querySelectorAll('tr[data-g]').forEach(r=>r.addEventListener('click',()=>abrirGasto(r.dataset.g)));
   c.querySelectorAll('[data-anio]').forEach(b=>b.addEventListener('click',()=>{
-    anioSel=+b.dataset.anio; pintar();
+    anioSel = +b.dataset.anio;
+    if(vista==='dinero') periodo.anio = anioSel;   // en Wallet manda el periodo
+    pintar();
   }));
   c.querySelectorAll('[data-acc]').forEach(b=>b.addEventListener('click',()=>{
     const a=b.dataset.acc;
@@ -3662,23 +3374,18 @@ function pintar(){
     triAbierto = triAbierto===n ? null : n;
     pintar();
   }));
-  c.querySelectorAll('[data-tri-rueda]').forEach(b=>b.addEventListener('click',()=>{
-    const v=b.dataset.triRueda;
-    triRueda = v==='' ? null : +v;
+  c.querySelectorAll('[data-pertipo]').forEach(b=>b.addEventListener('click',()=>{
+    periodo.tipo = b.dataset.pertipo;
     pintar();
+  }));
+  c.querySelectorAll('[data-permes]').forEach(b=>b.addEventListener('click',()=>{
+    periodo.mes = +b.dataset.permes; pintar();
+  }));
+  c.querySelectorAll('[data-pertri]').forEach(b=>b.addEventListener('click',()=>{
+    periodo.tri = +b.dataset.pertri; pintar();
   }));
   c.querySelectorAll('[data-lista]').forEach(b=>b.addEventListener('click',()=>{
     listaSel=b.dataset.lista; pintar();
-  }));
-  c.querySelectorAll('[data-mes-rueda]').forEach(b=>b.addEventListener('click',()=>{
-    mesRueda=+b.dataset.mesRueda; pintar();
-  }));
-  c.querySelectorAll('[data-rmes]').forEach(b=>b.addEventListener('click',()=>{
-    const ms=[...new Set(D.cobros.concat(D.gastos)
-      .filter(x=>aFecha(x.fecha).getFullYear()===anioSel)
-      .map(x=>aFecha(x.fecha).getMonth()))].sort((a,b)=>a-b);
-    const i=ms.indexOf(mesRueda)+ +b.dataset.rmes;
-    if(i>=0 && i<ms.length){ mesRueda=ms[i]; pintar(); }
   }));
   c.querySelectorAll('[data-mes-toggle]').forEach(b=>b.addEventListener('click',()=>{
     const k=b.dataset.mesToggle;
