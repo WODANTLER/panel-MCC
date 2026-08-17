@@ -433,11 +433,27 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 /* ── ruedas de reparto ───────────────────────────────────────────────── */
 .ruedas{display:grid;gap:14px;margin-bottom:8px}
 @media(min-width:720px){.ruedas{grid-template-columns:1fr 1fr}}
-/* Las dos columnas comparten rejilla vertical: cabecera, subtítulo,
-   selector, rueda y leyenda ocupan la misma altura en las dos, así los
-   gráficos quedan a la misma altura pase lo que pase con el texto. */
+/* Las dos columnas comparten rejilla vertical: cabecera, subtítulo, nota,
+   rueda y leyenda ocupan la misma altura en las dos, así los gráficos
+   quedan a la misma altura pase lo que pase con el texto.
+
+   Cada hijo tiene su fila asignada POR NOMBRE, no por orden de aparición.
+   El bloque de la izquierda no lleva nota: cuando las filas se repartían
+   por orden, su rueda caía en la fila de la nota —de altura fija— y el SVG
+   se desbordaba por encima de la leyenda. Con la fila fijada por clase da
+   igual cuántos hijos tenga cada bloque. */
 .rbloque{border:1px solid var(--linea2);background:#fff;padding:16px;
-  display:grid;grid-template-rows:26px 20px 34px auto 1fr;justify-items:center;gap:8px}
+  display:grid;grid-template-rows:26px 20px 16px auto 1fr;justify-items:center;gap:8px}
+.rbloque>.rbloque-cab {grid-row:1}
+.rbloque>.rbloque-sub {grid-row:2}
+.rbloque>.rbloque-nota{grid-row:3;align-self:center}
+.rbloque>.rueda       {grid-row:4}
+.rbloque>.leyenda-r   {grid-row:5}
+/* Apiladas en móvil ya no hay nada que alinear entre columnas: las filas
+   se sueltan para que la nota pueda ocupar dos líneas sin desbordar. */
+@media(max-width:719px){
+  .rbloque{grid-template-rows:auto auto auto auto 1fr}
+}
 .rbloque-cab{display:grid;grid-template-columns:34px 1fr 34px;align-items:center;
   width:100%;gap:6px}
 .rbloque-cab b{grid-column:2;text-align:center;
@@ -460,7 +476,8 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .tri-btn:hover{background:#fff;color:var(--tinta)}
 .tri-btn.on{background:var(--oro-suave);color:var(--oro);font-weight:600}
 .tri-btn:focus-visible{outline:2px solid var(--oro);outline-offset:-2px}
-.rueda{width:100%;max-width:210px;height:auto;margin:0;align-self:center}
+.rueda{width:100%;max-width:210px;height:auto;aspect-ratio:1/1;margin:0;
+  align-self:center;overflow:visible}
 .rueda circle{transition:opacity .16s}
 .rueda:hover circle{opacity:.55}
 .rueda circle:hover{opacity:1}
@@ -603,6 +620,33 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
   font-family:var(--sans);font-size:14px;padding:8px 9px;width:100%}
 .lin-fac input:focus{outline:0;border-color:var(--oro);box-shadow:0 0 0 3px var(--oro-suave)}
 
+/* ─── presupuestos ─────────────────────────────────────────────────── */
+.fila3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+@media(max-width:560px){.fila3{grid-template-columns:1fr 1fr}}
+.pill.ok{color:#1d6b45;border-color:#bfe0cd;background:#eef7f1}
+.pill.avisa{color:#8a6a17;border-color:#e6d6a8;background:#faf4e4}
+.pre-apagado td{opacity:.5}
+.pre-apagado td:first-child{opacity:.75}
+.pre-avisovida{margin:0 0 14px;font-size:12.5px;color:var(--dim);line-height:1.5}
+.pre-avisovida b{color:var(--tinta);font-weight:600}
+
+/* La franja de validez: es lo que diferencia un presupuesto de una
+   factura, así que se ve antes que la letra pequeña. */
+.pres-validez{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  margin:18px 0 0;padding:11px 14px;background:#14141A;color:#fff}
+.pres-val-et{font-family:var(--mono);font-size:7.5pt;letter-spacing:.14em;
+  text-transform:uppercase;color:#b9b9c2}
+.pres-validez b{font-family:var(--display);font-variation-settings:'wdth' 84,'wght' 700;
+  font-size:12pt;letter-spacing:.01em}
+.pres-val-nota{margin-left:auto;font-size:8.5pt;color:#b9b9c2}
+.pres-notas{margin:14px 0 0;padding:10px 13px;background:#f6f6f2;
+  font-size:9pt;line-height:1.55;color:#44444c;border-left:2px solid #14141A}
+.pres-legal{margin:8px 0 0;font-size:7.5pt;line-height:1.5;color:#7a7a84}
+@media(max-width:560px){
+  .pres-validez{gap:6px}
+  .pres-val-nota{margin-left:0;width:100%}
+}
+
 @media print{
   body>*{display:none!important}
   .fac{display:block!important;width:auto}
@@ -701,10 +745,11 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
     </div>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true"  data-v="plazas">Plazas</button>
-      <button class="tab" role="tab" aria-selected="false" data-v="dinero">Wallet</button>
       <button class="tab" role="tab" aria-selected="false" data-v="clientes">Clientes</button>
       <button class="tab" role="tab" aria-selected="false" data-v="registro">Registro</button>
       <button class="tab" role="tab" aria-selected="false" data-v="impuestos">Impuestos</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="dinero">Wallet</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="presupuestos">Presupuestos</button>
       <button class="tab" role="tab" aria-selected="false" data-v="facturas">Facturación</button>
       <button class="tab" role="tab" aria-selected="false" data-v="ajustes">Ajustes</button>
     </nav>
@@ -899,10 +944,15 @@ function rueda(partes, centroVal, centroEt){
     off += largo;
     return el;
   }).join('');
+  /* El hueco del centro mide 114 unidades de ancho. Un importe de seis
+     cifras no cabe a 21px y se montaba encima del anillo, así que la
+     tipografía baja según lo largo que sea el número. */
+  const n = String(centroVal).length;
+  const tam = n > 12 ? 14 : n > 10 ? 17 : n > 8 ? 19 : 21;
   return `<svg viewBox="0 0 180 180" class="rueda" role="img" aria-label="${esc(centroEt)}">
       <circle cx="90" cy="90" r="${R}" fill="none" stroke="var(--linea)" stroke-width="${GROSOR}"/>
       ${arcos}
-      <text x="90" y="86" class="r-val">${centroVal}</text>
+      <text x="90" y="86" class="r-val" style="font-size:${tam}px">${centroVal}</text>
       <text x="90" y="102" class="r-et">${esc(centroEt)}</text>
     </svg>`;
 }
@@ -1019,7 +1069,7 @@ const fs   = firebase.firestore();
 /* Cada movimiento es un documento suelto dentro de su colección. Ninguno
    crece con el tiempo: crece el número de documentos, que es lo que
    Firestore hace bien. Es lo contrario del error de acumular todo en uno. */
-const COLECCIONES = ['trabajos','cobros','gastos','clientes','fijos','plazas','servicios','facturas'];
+const COLECCIONES = ['trabajos','cobros','gastos','clientes','fijos','plazas','servicios','facturas','presupuestos'];
 const DOC_FISCAL = () => fs.collection('config').doc('fiscal');
 
 let persiste = true;
@@ -1125,7 +1175,7 @@ function pintarAvisoMemoria(){
 }
 
 /* ─── datos ────────────────────────────────────────────────────────── */
-let D = {trabajos:[], cobros:[], gastos:[], fijos:[], clientes:[], plazas:[], servicios:[], facturas:[], fiscal:null};
+let D = {trabajos:[], cobros:[], gastos:[], fijos:[], clientes:[], plazas:[], servicios:[], facturas:[], presupuestos:[], fiscal:null};
 let sig = 1;
 const nid = () => 'x'+(sig++)+'-'+Math.random().toString(36).slice(2,7);
 
@@ -1137,7 +1187,7 @@ function semilla(){
   D.fiscal    = {...FISCAL_INI};
   D.plazas    = PLAZAS_INI.map(p=>({...p}));
   D.servicios = SERVICIOS_INI.map(x=>({...x, id:nid()})).sort(ordenServicios);
-  D.trabajos = []; D.cobros = []; D.gastos = []; D.clientes = []; D.fijos = []; D.facturas = [];
+  D.trabajos = []; D.cobros = []; D.gastos = []; D.clientes = []; D.fijos = []; D.facturas = []; D.presupuestos = [];
 }
 
 
@@ -1643,6 +1693,474 @@ function vistaDinero(){
   return h;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   PRESUPUESTOS
+
+   Un presupuesto no es una factura: no tiene valor fiscal, no entra en el
+   IVA y no necesita numeración correlativa sin huecos. Por eso vive en su
+   propia colección y se puede borrar sin romper nada.
+
+   Se limpian solos a los 15 días —así la base no se llena de propuestas
+   que nunca cuajaron—, salvo los marcados como aceptados: esos se guardan
+   hasta que se pasen a factura. Perder un presupuesto aceptado sí sería
+   un problema, y por eso son la excepción.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const presupuestos = () => D.presupuestos || [];
+const DIAS_VIDA_PRESU = 15;
+
+/* El número no se recicla aunque se borren los viejos: se guarda el último
+   usado en la configuración. Si no, al vaciarse la lista volvería al 1 y
+   dos clientes distintos tendrían el mismo número. */
+const proximoPresu = () => Math.max(
+  fiscal().ultimoPresu || 0,
+  ...presupuestos().map(p => +p.numero || 0), 0) + 1;
+
+function totalesPresu(p){
+  const base = (p.lineas||[]).reduce((a,l)=>a+(l.cantidad||1)*(l.precio||0), 0);
+  const dto  = base * (p.descuento||0)/100;
+  const sub  = base - dto;
+  const tipo = p.intraUE ? 0 : (p.iva != null ? p.iva : fiscal().iva);
+  const iva  = sub * tipo/100;
+  return {base, dto, sub, tipo, iva, total: sub + iva};
+}
+
+const caducaEl = p => aIso(sumar(aFecha(p.fecha), +p.validez || DIAS_VIDA_PRESU));
+const diasParaCaducar = p => diasEntre(hoy, aFecha(caducaEl(p)));
+const estadoPresu = p => p.estado || 'abierto';
+
+/* Limpieza automática. Se ejecuta al arrancar, una vez.
+   Solo toca los que ya caducaron hace más de DIAS_VIDA_PRESU días y que
+   nadie marcó como aceptados. */
+async function limpiarPresupuestos(){
+  const viejos = presupuestos().filter(p =>
+    estadoPresu(p) !== 'aceptado' &&
+    diasEntre(aFecha(p.fecha), hoy) > DIAS_VIDA_PRESU);
+  if(!viejos.length) return 0;
+  for(const p of viejos){
+    try{ if(p.id) await borrarDoc('presupuestos', p.id); }catch(e){ console.warn('no se pudo borrar', e); }
+  }
+  D.presupuestos = presupuestos().filter(p=>!viejos.includes(p));
+  return viejos.length;
+}
+
+/* ─── listado ──────────────────────────────────────────────────────── */
+function vistaPresupuestos(){
+  const ps = presupuestos().slice().sort((a,b)=>(+b.numero||0)-(+a.numero||0));
+
+  const abiertos  = ps.filter(p=>estadoPresu(p)==='abierto' && diasParaCaducar(p) >= 0);
+  const aceptados = ps.filter(p=>estadoPresu(p)==='aceptado');
+  const enPie     = abiertos.reduce((a,p)=>a+totalesPresu(p).total, 0);
+  const ganado    = aceptados.reduce((a,p)=>a+totalesPresu(p).total, 0);
+  const cerrados  = ps.filter(p=>estadoPresu(p)!=='abierto').length;
+  const tasa      = cerrados ? Math.round(aceptados.length/cerrados*100) : null;
+
+  let h = `<div class="kpis">
+      <div class="kpi destaca"><span class="et">En la calle</span>
+        <div class="n">${eur(enPie)}<small>€</small></div>
+        <div class="sub">${abiertos.length} presupuesto${abiertos.length===1?'':'s'} sin respuesta</div></div>
+      <div class="kpi"><span class="et">Aceptados</span>
+        <div class="n">${eur(ganado)}<small>€</small></div>
+        <div class="sub">${aceptados.length} esperando pasar a factura</div></div>
+      <div class="kpi"><span class="et">Se cierran</span>
+        <div class="n">${tasa===null?'—':tasa+'%'}</div>
+        <div class="sub">${tasa===null?'aún sin datos':'de los que ya se resolvieron'}</div></div>
+      <div class="kpi"><span class="et">Siguiente número</span>
+        <div class="n">${proximoPresu()}</div>
+        <div class="sub">no se reutilizan</div></div>
+    </div>
+
+    <div class="cab"><h2>Presupuestos</h2>
+      <span class="nota">toca uno para verlo, descargarlo o pasarlo a factura</span></div>
+    <div class="anio">
+      <button class="btn mini pri" data-acc="presupuesto">+ Nuevo presupuesto</button>
+      <input class="buscar" id="q-pre" placeholder="Buscar por cliente, vehículo o número…" autocomplete="off">
+    </div>
+    <p class="pre-avisovida">Los presupuestos se borran solos a los ${DIAS_VIDA_PRESU} días.
+      Los que marques como <b>aceptados</b> se quedan hasta que los pases a factura.</p>`;
+
+  if(!ps.length) return h + `<div class="vacio" style="border:1px solid var(--linea)">
+    Todavía no hay ninguno. El primero saldrá con el número ${proximoPresu()}.</div>`;
+
+  h += `<table class="tabla" id="tb-pre"><thead><tr>
+      <th>Nº</th><th>Fecha</th><th>Cliente</th><th>Vehículo</th><th>Estado</th>
+      <th style="text-align:right">Total</th>
+    </tr></thead><tbody>`
+    + ps.map(p=>{
+        const t = totalesPresu(p);
+        const e = estadoPresu(p);
+        const d = diasParaCaducar(p);
+        const q = [p.numero,p.cliente,p.vehiculo].filter(Boolean).join(' ').toLowerCase();
+        const pill = e==='aceptado'  ? '<span class="pill ok">aceptado</span>'
+                   : e==='rechazado' ? '<span class="pill sinf">rechazado</span>'
+                   : d < 0           ? '<span class="pill sinf">caducado</span>'
+                   : d <= 3          ? `<span class="pill avisa">caduca en ${d} d</span>`
+                   :                   `<span class="pill">vale ${d} d más</span>`;
+        return `<tr data-pre="${p.id}" data-q="${esc(q)}" style="cursor:pointer"
+            class="${e==='rechazado'||(e==='abierto'&&d<0)?'pre-apagado':''}">
+          <td><b>${esc(p.numero)}</b></td>
+          <td class="num" style="color:var(--dim)">${fCorta(aFecha(p.fecha))}</td>
+          <td>${esc(p.cliente||'—')}</td>
+          <td style="color:var(--dim)">${esc(p.vehiculo||'—')}</td>
+          <td>${pill}</td>
+          <td class="num"><b>${eur(t.total)} €</b></td></tr>`;
+      }).join('')
+    + `</tbody></table>`;
+
+  return h;
+}
+
+/* ─── editor ───────────────────────────────────────────────────────── */
+let editP=null, lineasP=[];
+
+function abrirPresupuesto(id){
+  editP = id ? presupuestos().find(p=>p.id===id) : null;
+  const p = editP || {
+    numero: proximoPresu(), fecha: aIso(hoy), validez: DIAS_VIDA_PRESU,
+    cliente:'', clienteNif:'', clienteTel:'', clienteDir:'', clienteCiudad:'', clienteCp:'',
+    vehiculo:'', matricula:'', color:'', intraUE:false, descuento:0,
+    lineas:[], notas:'', condiciones:'', estado:'abierto'
+  };
+  lineasP = (p.lineas||[]).map(l=>({...l}));
+  if(!lineasP.length) lineasP.push({desc:'', cantidad:1, precio:0});
+
+  const nombres = [...new Set(D.clientes.map(c=>c.nombre)
+    .concat(D.trabajos.map(t=>t.cliente)))].filter(Boolean).sort();
+  const coches = [...new Set(D.clientes.flatMap(c=>(c.vehiculos||[]).map(v=>v.modelo))
+    .concat(D.trabajos.map(t=>t.coche)))].filter(Boolean).sort();
+  const servis = (D.servicios||[]).slice().sort((a,b)=>String(a.n).localeCompare(String(b.n)));
+
+  $('#hojaC').innerHTML = `<h3>${editP?'Editar presupuesto':'Nuevo presupuesto'}</h3>
+    <div class="fila3">
+      <div class="campo"><label for="p-num">Número</label>
+        <input type="number" id="p-num" value="${p.numero}" inputmode="numeric"></div>
+      <div class="campo"><label for="p-fec">Fecha</label>
+        <input type="date" id="p-fec" value="${p.fecha}"></div>
+      <div class="campo"><label for="p-val">Validez</label>
+        <select id="p-val">
+          ${[7,15,30,60].map(d=>`<option value="${d}"${(+p.validez||DIAS_VIDA_PRESU)===d?' selected':''}>${d} días</option>`).join('')}
+        </select></div></div>
+
+    <div class="campo"><label for="p-cli">Cliente</label>
+      <input id="p-cli" list="lista-pcli" value="${esc(p.cliente)}" placeholder="Nombre o empresa" autocomplete="off">
+      <datalist id="lista-pcli">${nombres.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
+    <div class="fila2">
+      <div class="campo"><label for="p-tel">Teléfono</label>
+        <input id="p-tel" value="${esc(p.clienteTel)}" placeholder="+34 …" autocomplete="off"></div>
+      <div class="campo"><label for="p-nif">NIF / CIF</label>
+        <input id="p-nif" value="${esc(p.clienteNif)}" placeholder="opcional" autocomplete="off"></div></div>
+    <div class="fila2">
+      <div class="campo"><label for="p-ciu">Ciudad</label>
+        <input id="p-ciu" value="${esc(p.clienteCiudad)}" placeholder="Marbella, Málaga" autocomplete="off"></div>
+      <div class="campo"><label for="p-ue">IVA</label>
+        <select id="p-ue">
+          <option value="0"${!p.intraUE?' selected':''}>${fiscal().iva} % normal</option>
+          <option value="1"${p.intraUE?' selected':''}>0 % · empresa UE</option>
+        </select></div></div>
+
+    <div class="fila3">
+      <div class="campo"><label for="p-veh">Vehículo</label>
+        <input id="p-veh" list="lista-pveh" value="${esc(p.vehiculo)}" placeholder="Ferrari Purosangue" autocomplete="off">
+        <datalist id="lista-pveh">${coches.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
+      <div class="campo"><label for="p-mat">Matrícula</label>
+        <input id="p-mat" value="${esc(p.matricula)}" placeholder="opcional" autocomplete="off"></div>
+      <div class="campo"><label for="p-col">Color</label>
+        <input id="p-col" value="${esc(p.color)}" placeholder="opcional" autocomplete="off"></div></div>
+
+    <div class="cobros" id="p-lineas"></div>
+    <datalist id="lista-serv">${servis.map(s=>`<option value="${esc(s.n)}">`).join('')}</datalist>
+
+    <div class="fila2">
+      <div class="campo"><label for="p-dto">Descuento (%)</label>
+        <input type="number" id="p-dto" step="1" min="0" max="90" value="${p.descuento||''}" placeholder="0" inputmode="numeric"></div>
+      <div class="campo"><label for="p-est">Estado</label>
+        <select id="p-est">
+          <option value="abierto"${estadoPresu(p)==='abierto'?' selected':''}>Abierto · esperando respuesta</option>
+          <option value="aceptado"${estadoPresu(p)==='aceptado'?' selected':''}>Aceptado · no se borra solo</option>
+          <option value="rechazado"${estadoPresu(p)==='rechazado'?' selected':''}>Rechazado</option>
+        </select></div></div>
+
+    <div class="campo"><label for="p-not">Notas para el cliente</label>
+      <textarea id="p-not" rows="2" placeholder="Se aplica sobre pintura en buen estado. Si hace falta corrección previa se valora aparte.">${esc(p.notas)}</textarea></div>
+    <div class="campo"><label for="p-con">Condiciones de pago</label>
+      <input id="p-con" value="${esc(p.condiciones)}" placeholder="50 % al confirmar y el resto a la entrega" autocomplete="off"></div>
+
+    <div class="acc">
+      <button class="btn" type="button" data-cerrar>Cancelar</button>
+      <button class="btn pri" type="button" id="p-ok">Guardar y ver</button>
+    </div>`;
+  $('#hoja').classList.add('on');
+  $('#p-cli').focus();
+
+  /* Al elegir un cliente ya conocido se traen sus datos: nadie quiere
+     teclear el mismo teléfono dos veces. */
+  $('#p-cli').addEventListener('change',()=>{
+    const n = normNom($('#p-cli').value);
+    const c = D.clientes.find(x=>normNom(x.nombre)===n);
+    if(!c) return;
+    if(c.telefono && !$('#p-tel').value) $('#p-tel').value = c.telefono;
+    if(c.nif && !$('#p-nif').value) $('#p-nif').value = c.nif;
+    if(c.ciudad && !$('#p-ciu').value) $('#p-ciu').value = c.ciudad;
+    if(c.intraUE) $('#p-ue').value = '1';
+  });
+
+  function pintarLineasP(){
+    const cont=$('#p-lineas'); if(!cont) return;
+    cont.innerHTML = `<label style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;
+        text-transform:uppercase;color:var(--dim)">Conceptos</label>`
+      + lineasP.map((l,i)=>`<div class="lin-fac">
+          <input class="p-desc" data-i="${i}" list="lista-serv" value="${esc(l.desc)}" placeholder="PPF Full Front" autocomplete="off">
+          <input class="p-cant" data-i="${i}" type="number" min="1" value="${l.cantidad||1}" inputmode="numeric">
+          <input class="p-prec" data-i="${i}" type="number" step="0.01" value="${l.precio||''}" placeholder="Precio" inputmode="decimal">
+          <button class="x" data-qp="${i}" aria-label="Quitar concepto">×</button>
+        </div>`).join('')
+      + `<button class="btn mini" id="p-add" type="button" style="margin-top:8px">+ Concepto</button>
+         <div class="desglose" id="p-desg" style="margin-top:12px"></div>`;
+
+    /* Al escribir un servicio del catálogo se rellena su precio, pero solo
+       si la línea está a cero: si ya hay un importe puesto a mano, manda ese. */
+    cont.querySelectorAll('.p-desc').forEach(el=>{
+      el.addEventListener('input',e=>{ lineasP[+e.target.dataset.i].desc = e.target.value; });
+      el.addEventListener('change',e=>{
+        const i=+e.target.dataset.i;
+        const s=(D.servicios||[]).find(x=>x.n===e.target.value);
+        if(s && s.p && !lineasP[i].precio){
+          lineasP[i].precio = s.p;
+          const c=cont.querySelector(`.p-prec[data-i="${i}"]`); if(c) c.value = s.p;
+          totalesEnVivo();
+        }
+      });
+    });
+    cont.querySelectorAll('.p-cant').forEach(el=>el.addEventListener('input',e=>{
+      lineasP[+e.target.dataset.i].cantidad = Math.max(1, +e.target.value||1); totalesEnVivo(); }));
+    cont.querySelectorAll('.p-prec').forEach(el=>el.addEventListener('input',e=>{
+      lineasP[+e.target.dataset.i].precio = numero(e.target.value); totalesEnVivo(); }));
+    cont.querySelectorAll('[data-qp]').forEach(b=>b.addEventListener('click',()=>{
+      lineasP.splice(+b.dataset.qp,1);
+      if(!lineasP.length) lineasP.push({desc:'',cantidad:1,precio:0});
+      pintarLineasP(); }));
+    $('#p-add').addEventListener('click',()=>{
+      lineasP.push({desc:'',cantidad:1,precio:0}); pintarLineasP(); });
+    totalesEnVivo();
+  }
+
+  /* Solo se refresca el resumen, no la lista entera: si se repinta todo
+     mientras se escribe, el cursor salta al principio del campo. */
+  function totalesEnVivo(){
+    const d = $('#p-desg'); if(!d) return;
+    const base = lineasP.reduce((a,l)=>a+(l.cantidad||1)*(l.precio||0),0);
+    const pc   = Math.max(0, Math.min(90, +($('#p-dto')||{}).value || 0));
+    const dto  = base*pc/100, sub = base-dto;
+    const tipo = $('#p-ue').value==='1' ? 0 : fiscal().iva;
+    d.innerHTML = `<span>Base <b>${eur(base)} €</b></span>`
+      + (pc?`<span>Dto. ${pc} % <b>−${eur(dto)} €</b></span>`:'')
+      + `<span>IVA ${tipo} % <b>${eur(sub*tipo/100)} €</b></span>
+         <span class="tot">Total <b>${eur(sub*(1+tipo/100))} €</b></span>`;
+  }
+  pintarLineasP();
+  $('#p-ue').addEventListener('change',totalesEnVivo);
+  $('#p-dto').addEventListener('input',totalesEnVivo);
+
+  $('#p-ok').addEventListener('click',()=>{
+    const num = +$('#p-num').value || proximoPresu();
+    const d = {
+      numero: num, fecha: $('#p-fec').value || aIso(hoy),
+      validez: +$('#p-val').value || DIAS_VIDA_PRESU,
+      cliente: $('#p-cli').value.trim(), clienteNif: $('#p-nif').value.trim(),
+      clienteTel: $('#p-tel').value.trim(), clienteCiudad: $('#p-ciu').value.trim(),
+      clienteDir: p.clienteDir || '', clienteCp: p.clienteCp || '',
+      intraUE: $('#p-ue').value==='1',
+      vehiculo: $('#p-veh').value.trim(), matricula: $('#p-mat').value.trim(),
+      color: $('#p-col').value.trim(),
+      descuento: Math.max(0, Math.min(90, +$('#p-dto').value||0)),
+      estado: $('#p-est').value,
+      notas: $('#p-not').value.trim(), condiciones: $('#p-con').value.trim(),
+      lineas: lineasP.filter(l=>(l.desc||'').trim() || l.precio)
+    };
+    if(!d.lineas.length){ alert('Añade al menos un concepto.'); return; }
+    let destino;
+    if(editP){ Object.assign(editP, d); destino = editP; }
+    else { destino = Object.assign({id:nid()}, d); D.presupuestos.push(destino); }
+    /* Se recuerda el número más alto usado para que no se repita cuando la
+       limpieza automática se lleve los viejos. */
+    if(num > (fiscal().ultimoPresu||0)) D.fiscal = {...fiscal(), ultimoPresu:num};
+    cerrar(); guardar(); pintar();
+    verPresupuesto(destino.id);
+  });
+}
+
+/* ─── vista previa, impresión y PDF ────────────────────────────────── */
+function verPresupuesto(id){
+  const p = presupuestos().find(x=>x.id===id); if(!p) return;
+  const e = estadoPresu(p);
+  const d = diasParaCaducar(p);
+
+  $('#hojaC').innerHTML = `<div class="fac-acciones">
+      <button class="btn mini" data-cerrar>Cerrar</button>
+      <button class="btn mini" id="pre-edit">Editar</button>
+      ${e!=='aceptado'?`<button class="btn mini" id="pre-ok">Marcar aceptado</button>`:''}
+      ${e==='aceptado'?`<button class="btn mini" id="pre-fac">Pasar a factura</button>`:''}
+      <button class="btn mini borrar" id="pre-del">Eliminar</button>
+      <button class="btn mini" id="pre-pdf">Descargar PDF</button>
+      <button class="btn pri mini" id="pre-imp">Imprimir</button>
+    </div>
+    ${e==='aceptado'?`<div class="fac-aviso">Aceptado. No se borrará solo: pásalo a factura cuando toque.</div>`:''}
+    ${e==='rechazado'?`<div class="fac-aviso">Marcado como rechazado.</div>`:''}
+    ${e==='abierto'&&d<0?`<div class="fac-aviso">Caducó hace ${-d} día${-d===1?'':'s'}. Se borrará solo.</div>`:''}
+    <div class="fac-prev">${htmlPresupuesto(p)}</div>`;
+  $('#hoja').classList.add('on');
+  $('#hojaC').classList.add('ancho');
+
+  $('#pre-edit').addEventListener('click',()=>{ cerrarFac(); abrirPresupuesto(id); });
+  const ok=$('#pre-ok'); if(ok) ok.addEventListener('click',()=>{
+    p.estado='aceptado'; guardar(); pintar(); verPresupuesto(id);
+  });
+  const afac=$('#pre-fac'); if(afac) afac.addEventListener('click',()=>presupuestoAFactura(id));
+  $('#pre-del').addEventListener('click',()=>{
+    if(!confirm(`¿Eliminar el presupuesto ${p.numero}?`)) return;
+    if(p.id) borrarDoc('presupuestos', p.id);
+    D.presupuestos = presupuestos().filter(x=>x.id!==p.id);
+    cerrarFac(); guardar(); pintar();
+  });
+  $('#pre-imp').addEventListener('click',()=>imprimirPresupuesto(p, false));
+  $('#pre-pdf').addEventListener('click',()=>imprimirPresupuesto(p, true));
+}
+
+/* Un presupuesto aceptado ya trae todo lo que necesita una factura, así
+   que se abre el formulario con los datos puestos. Se revisa y se emite:
+   nadie vuelve a teclear los conceptos. El descuento se aplica sobre cada
+   línea para que el total facturado coincida con el que aceptó el cliente. */
+function presupuestoAFactura(id){
+  const p = presupuestos().find(x=>x.id===id); if(!p) return;
+  if(!confirm(`Se abrirá una factura nueva con los datos del presupuesto ${p.numero}.\n\n`
+    + `El presupuesto se queda como está: bórralo cuando la factura esté emitida.`)) return;
+  const f = 1 - (p.descuento||0)/100;
+  cerrarFac();
+  abrirFactura(null, {
+    cliente:p.cliente, clienteNif:p.clienteNif, clienteDir:p.clienteDir,
+    clienteCiudad:p.clienteCiudad, clienteCp:p.clienteCp, intraUE:p.intraUE,
+    vehiculo:p.vehiculo, matricula:p.matricula, condiciones:p.condiciones,
+    lineas:(p.lineas||[]).map(l=>({...l, precio: Math.round((l.precio||0)*f*100)/100}))
+  });
+}
+
+function imprimirPresupuesto(p, comoPdf){
+  const css = [...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
+  const w = window.open('', '_blank');
+  if(!w){ alert('El navegador ha bloqueado la ventana. Permite las ventanas emergentes para poder imprimir.'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <title>Presupuesto ${esc(p.numero)} · ${esc(p.cliente||'')}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>${css}
+      body{background:#fff;padding:0;margin:0}
+      .fac{margin:0 auto}
+      @page{size:A4;margin:14mm}
+    </style></head><body>${htmlPresupuesto(p)}</body></html>`);
+  w.document.close();
+  const lanzar = () => { w.focus(); w.print(); };
+  if(w.document.fonts && w.document.fonts.ready) w.document.fonts.ready.then(()=>setTimeout(lanzar,120));
+  else setTimeout(lanzar, 600);
+}
+
+/* El mismo marcado sirve para la vista previa, para imprimir y para el
+   PDF: lo que se ve en pantalla es exactamente lo que sale en papel. */
+function htmlPresupuesto(p){
+  const t = totalesPresu(p);
+  const ls = (p.lineas||[]).filter(l=>(l.desc||'').trim() || l.precio);
+  const vacias = Math.max(0, 4 - ls.length);
+  const veh = [p.vehiculo, p.color].filter(Boolean).join(' · ');
+
+  return `<article class="fac pres">
+    <header class="fac-top">
+      <div class="fac-marca">
+        <svg viewBox="0 0 1492 1492" class="fac-logo" aria-hidden="true">
+          <circle cx="746" cy="746" r="746" fill="#14141A"/>
+          <g transform="translate(311.87 233.84) scale(1.0003)"><path fill="#fff" fill-rule="evenodd" d="M 430.00 1022.98 L 430.00 1021.95 L 337.99 929.98 L 245.99 838.00 L 246.01 716.46 L 246.03 594.93 L 247.71 594.28 L 249.38 593.64 L 249.79 594.86 L 250.19 596.08 L 341.20 687.04 L 432.20 778.00 L 434.01 778.00 L 435.81 778.00 L 650.87 563.00 L 865.93 348.00 L 866.97 348.00 L 868.00 348.00 L 868.00 594.00 L 868.00 840.00 L 867.12 840.00 L 866.24 840.00 L 781.12 925.12 L 696.00 1010.23 L 696.00 1011.12 L 696.00 1012.00 L 694.00 1012.00 L 692.00 1012.00 L 692.00 891.00 L 692.00 770.00 L 691.01 770.00 L 690.02 770.00 L 564.01 895.98 L 438.00 1021.96 L 438.00 1022.98 L 438.00 1024.00 L 434.00 1024.00 L 430.00 1024.00 L 430.00 1022.98 Z M 172.00 1011.11 L 172.00 1010.23 L 88.00 926.24 L 4.00 842.25 L 4.00 839.69 L 4.00 837.13 L 2.00 836.50 L 0.00 835.87 L 0.00 417.93 L 0.00 0.00 L 2.00 0.00 L 4.00 0.00 L 4.00 1.02 L 4.00 2.04 L 218.03 216.02 L 432.06 430.00 L 434.00 430.00 L 435.94 430.00 L 649.97 216.02 L 864.00 2.04 L 864.00 1.02 L 864.00 0.00 L 866.00 0.00 L 868.00 0.00 L 868.00 123.00 L 868.00 246.00 L 867.09 246.00 L 866.19 246.00 L 651.13 461.00 L 436.07 676.00 L 434.00 676.00 L 431.94 676.00 L 304.89 549.00 L 177.85 422.00 L 176.93 422.00 L 176.00 422.00 L 176.00 717.00 L 176.00 1012.00 L 174.00 1012.00 L 172.00 1012.00 L 172.00 1011.11 Z"/></g>
+        </svg>
+        <div class="fac-emisor">
+          <b>${esc(EMISOR.nombre)}</b>
+          <span>${esc(EMISOR.titular)}</span>
+          <span>NIF: ${esc(EMISOR.nif)}</span>
+          <span>${esc(EMISOR.direccion)}</span>
+          <span>${esc(EMISOR.ciudad)} · CP ${esc(EMISOR.cp)}</span>
+          <span>Tel. ${esc(EMISOR.tel)}</span>
+        </div>
+      </div>
+      <div class="fac-meta">
+        <h1>Presupuesto</h1>
+        <div class="fac-num">Nº ${esc(p.numero)}</div>
+        <div class="fac-fecha">${fLarga(p.fecha)}</div>
+        <div class="fac-contacto">
+          <span>${esc(EMISOR.email)}</span>
+          <span>${esc(EMISOR.web)}</span>
+          <span>${esc(EMISOR.instagram)}</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="fac-partes">
+      <div class="fac-parte">
+        <h2>Para</h2>
+        <b>${esc(p.cliente||'—')}</b>
+        ${p.clienteTel?`<span>${esc(p.clienteTel)}</span>`:''}
+        ${p.clienteNif?`<span>NIF: ${esc(p.clienteNif)}</span>`:''}
+        ${p.clienteCiudad?`<span>${esc(p.clienteCiudad)}</span>`:''}
+      </div>
+      <div class="fac-parte fac-veh">
+        <h2>Vehículo</h2>
+        <b>${esc(veh||'—')}</b>
+        ${p.matricula?`<span>Matrícula: ${esc(p.matricula)}</span>`:''}
+      </div>
+    </section>
+
+    <table class="fac-tabla">
+      <thead><tr>
+        <th>Servicio</th>
+        <th class="c">Cantidad</th>
+        <th class="d">Precio</th>
+        <th class="d">Importe</th>
+      </tr></thead>
+      <tbody>
+        ${ls.map(l=>`<tr>
+          <td>${esc(l.desc)}</td>
+          <td class="c">${l.cantidad||1}</td>
+          <td class="d">${eur(l.precio)} €</td>
+          <td class="d">${eur((l.cantidad||1)*(l.precio||0))} €</td></tr>`).join('')}
+        ${Array.from({length:vacias}).map(()=>'<tr class="vac"><td colspan="4">&nbsp;</td></tr>').join('')}
+      </tbody>
+    </table>
+
+    <div class="fac-tot">
+      <div class="lin"><span>Base</span><b>${eur(t.base)} €</b></div>
+      ${p.descuento?`<div class="lin"><span>Descuento ${p.descuento} %</span><b>−${eur(t.dto)} €</b></div>`:''}
+      ${p.descuento?`<div class="lin"><span>Base con descuento</span><b>${eur(t.sub)} €</b></div>`:''}
+      <div class="lin"><span>IVA ${t.tipo} %</span><b>${eur(t.iva)} €</b></div>
+      <div class="lin fin"><span>Total</span><b>${eur(t.total)} €</b></div>
+    </div>
+
+    <div class="pres-validez">
+      <span class="pres-val-et">Válido hasta</span>
+      <b>${fLarga(caducaEl(p))}</b>
+      <span class="pres-val-nota">Pasada esa fecha los precios pueden variar.</span>
+    </div>
+
+    ${p.notas?`<p class="pres-notas">${esc(p.notas)}</p>`:''}
+
+    ${p.intraUE?`<p class="fac-nota-ue">Operación exenta de IVA. Inversión del sujeto pasivo
+      conforme al artículo 196 de la Directiva 2006/112/CE.</p>`:''}
+
+    <footer class="fac-pie">
+      <div class="fac-pago">
+        <h2>Condiciones</h2>
+        <p>${esc(p.condiciones || 'Deberá abonarse el 50 % del total de forma anticipada para confirmar la reserva del vehículo y el saldo restante a la entrega.')}</p>
+        <p class="pres-legal">Este documento es un presupuesto, no una factura. No tiene validez fiscal
+          y no supone cargo alguno hasta su aceptación.</p>
+      </div>
+      <p class="fac-gracias">Gracias por confiar en nosotros</p>
+    </footer>
+  </article>`;
+}
+
 /* ─── vista de facturación ─────────────────────────────────────────── */
 function vistaFacturas(){
   const as = [...new Set(facturas().map(f=>aFecha(f.fecha).getFullYear()))].sort((a,b)=>b-a);
@@ -1714,13 +2232,15 @@ function vistaFacturas(){
 /* ─── editor de factura ────────────────────────────────────────────── */
 let editF2=null, lineasF=[];
 
-function abrirFactura(id){
+function abrirFactura(id, base){
   editF2 = id ? facturas().find(f=>f.id===id) : null;
-  const f = editF2 || {
+  /* `base` permite abrir la factura con datos ya puestos. Lo usa el paso
+     desde un presupuesto aceptado: mismos conceptos, sin volver a teclear. */
+  const f = editF2 || Object.assign({
     numero: proximoNumero(), fecha: aIso(hoy),
     cliente:'', clienteNif:'', clienteDir:'', clienteCiudad:'', clienteCp:'',
     vehiculo:'', matricula:'', intraUE:false, lineas:[], condiciones:''
-  };
+  }, base||{});
   lineasF = (f.lineas||[]).map(l=>({...l}));
   if(!lineasF.length) lineasF.push({desc:'', cantidad:1, precio:0});
 
@@ -1839,6 +2359,7 @@ function abrirFactura(id){
       clienteDir: $('#f-dir').value.trim(), clienteCiudad: $('#f-ciu').value.trim(),
       clienteCp: $('#f-cp').value.trim(), intraUE: $('#f-ue').value==='1',
       vehiculo: $('#f-veh').value.trim(), matricula: $('#f-mat').value.trim(),
+      condiciones: f.condiciones || '',
       lineas: lineasF.filter(l=>(l.desc||'').trim() || l.precio)
     };
     if(!d.lineas.length){ alert('Añade al menos un concepto.'); return; }
@@ -3324,6 +3845,7 @@ function pintar(){
     : vista==='clientes'?vistaClientes()
     : vista==='impuestos'?vistaImpuestos()
     : vista==='facturas'?vistaFacturas()
+    : vista==='presupuestos'?vistaPresupuestos()
     : vista==='ajustes'?vistaAjustes() : vistaRegistro();
   document.querySelectorAll('.tab').forEach(t=>
     t.setAttribute('aria-selected', String(t.dataset.v===vista)));
@@ -3351,6 +3873,7 @@ function pintar(){
     else if(a==='fijo') abrirFijo(null);
     else if(a==='verplantillas'){ plantillasAbiertas=!plantillasAbiertas; pintar(); }
     else if(a==='factura') abrirFactura(null);
+    else if(a==='presupuesto') abrirPresupuesto(null);
     else if(a==='verpeligro'){ peligroAbierto=!peligroAbierto; pintar(); }
     else if(a==='plegarreg'){
       const ks=[...new Set(D.trabajos.map(t=>{
@@ -3396,6 +3919,7 @@ function pintar(){
   c.querySelectorAll('tr[data-p]').forEach(r=>r.addEventListener('click',()=>abrirPlaza(r.dataset.p)));
   c.querySelectorAll('tr[data-s]').forEach(r=>r.addEventListener('click',()=>abrirServicio(r.dataset.s)));
   c.querySelectorAll('tr[data-fac]').forEach(r=>r.addEventListener('click',()=>verFactura(r.dataset.fac)));
+  c.querySelectorAll('tr[data-pre]').forEach(r=>r.addEventListener('click',()=>verPresupuesto(r.dataset.pre)));
   c.querySelectorAll('tr[data-fis]').forEach(r=>r.addEventListener('click',()=>{
     const k=r.dataset.fis;
     const v=prompt(k==='iva'?'IVA que se repercute (%)':'IRPF sobre el beneficio (%)', fiscal()[k]);
@@ -3405,7 +3929,7 @@ function pintar(){
     D.fiscal={...fiscal(), [k]:n}; guardar(); pintar();
   }));
   /* buscadores de las tablas largas */
-  [['q-ing','tb-ing'],['q-gas','tb-var'],['q-reg','tb-reg'],['q-fac','tb-fac']].forEach(([q,tb])=>{
+  [['q-ing','tb-ing'],['q-gas','tb-var'],['q-reg','tb-reg'],['q-fac','tb-fac'],['q-pre','tb-pre']].forEach(([q,tb])=>{
     const inp=c.querySelector('#'+q), cuerpo=c.querySelector('#'+tb);
     if(!inp||!cuerpo) return;
     inp.addEventListener('input',()=>{
@@ -3516,12 +4040,16 @@ auth.onAuthStateChanged(async user=>{
     if(!D.plazas || !D.plazas.length)       D.plazas    = PLAZAS_INI.map(p=>({...p}));
     if(!D.servicios || !D.servicios.length) D.servicios = SERVICIOS_INI.map(x=>({...x,id:nid()})).sort(ordenServicios);
     if(!D.clientes) D.clientes=[];
-  if(!D.facturas) D.facturas=[];
+    if(!D.facturas) D.facturas=[];
+    if(!D.presupuestos) D.presupuestos=[];
     if(!D.fiscal)   D.fiscal={...FISCAL_INI};
     if(D.fiscal.irpf===19) D.fiscal.irpf=20;
     (D.servicios||[]).forEach(x=>{ if(x.sena===undefined)
       x.sena = (SERVICIOS_INI.find(y=>y.n===x.n)||{}).sena === true; });
     pintar();
+    /* Los presupuestos caducados se retiran solos, una vez por sesión y
+       después de pintar: así la pantalla no espera a que termine. */
+    limpiarPresupuestos().then(n=>{ if(n) pintar(); });
   });
 });
 
