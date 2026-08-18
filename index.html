@@ -264,6 +264,13 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .sem-cab i{font-style:normal;margin-left:auto;font-family:var(--mono);font-size:10.5px;
   color:var(--dim)}
 
+/* Toda la rejilla es zona de gestos, no de lectura: aquí no se selecciona
+   texto. Ponerlo solo en la barra no bastaba —al mantener pulsado, el
+   navegador extendía la selección desde las etiquetas de alrededor y
+   acababa marcando media pantalla en azul. */
+.rej,.rej *{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent}
+.rej{position:relative}
 .rej-fila{display:flex;align-items:stretch;border-bottom:1px solid var(--linea)}
 .rej-fila:last-child{border-bottom:0}
 .rej-et{width:clamp(74px,18vw,96px);flex:none;border-right:1px solid var(--linea2);
@@ -1888,7 +1895,7 @@ function abrirPresupuesto(id){
       <button class="btn pri" type="button" id="p-ok">Guardar y ver</button>
     </div>`;
   $('#hoja').classList.add('on');
-  $('#p-cli').focus();
+  enfocar('#p-cli');
 
   /* Al elegir un cliente ya conocido se traen sus datos: nadie quiere
      teclear el mismo teléfono dos veces. */
@@ -2287,7 +2294,7 @@ function abrirFactura(id, base){
       <button class="btn pri" type="button" id="f-ok">Guardar y ver</button>
     </div>`;
   $('#hoja').classList.add('on');
-  $('#f-cli').focus();
+  enfocar('#f-cli');
 
   /* Al escribir el cliente se rellenan sus datos fiscales si ya están
      en su ficha: evita teclear el NIF cada vez. */
@@ -2836,7 +2843,7 @@ function abrirCliente(id, nombre){
       ${editC?`<button class="btn borrar" type="button" id="cl-del">Eliminar</button>`:''}
       <button class="btn pri" type="button" id="cl-ok">Guardar</button></div>`;
   $('#hoja').classList.add('on');
-  $('#cl-nom').focus();
+  enfocar('#cl-nom');
 
   /* Coches del cliente. Se guardan como fichas, no como texto suelto:
      asi el trabajo puede autocompletar y el historial se agrupa por coche. */
@@ -2875,7 +2882,7 @@ function abrirCliente(id, nombre){
       nif:$('#cl-nif').value.trim(), direccion:$('#cl-dir').value.trim(),
       ciudad:$('#cl-ciu').value.trim(), cp:$('#cl-cp').value.trim(),
       intraUE:$('#cl-ue').value==='1'};
-    if(!d.nombre){ $('#cl-nom').focus(); return; }
+    if(!d.nombre){ const e=$('#cl-nom'); if(e) e.focus(); return; }
     if(editC) Object.assign(editC,d); else D.clientes.push(Object.assign({id:nid()},d));
     cerrar(); guardar(); pintar();
   });
@@ -3031,7 +3038,7 @@ function abrirTrabajo(id, previo){
       <button class="btn pri" type="button" id="t-ok">Guardar</button></div>`;
 
   $('#hoja').classList.add('on');
-  $('#t-coche').focus();
+  enfocar('#t-coche');
 
   /* Materiales usados en este coche. Se restan del presupuesto para ver
      el margen; no se suman a los gastos, que ya los recoge la caja. */
@@ -3231,6 +3238,12 @@ function montarArrastre(el){
     const enTira = (ev.target && ev.target.dataset && ev.target.dataset.tira) || null;
     const puedeEstirar = !tactil || el.classList.contains('sel');
     modo = (enTira && puedeEstirar) ? enTira : 'mover';
+    /* Estirar es horizontal puro: se toma el control del gesto ya, sin
+       esperar, porque el dedo está sobre un tirador y no hay duda. */
+    if(modo !== 'mover') el.style.touchAction = 'none';
+    /* Si el navegador venía de marcar algo, se limpia antes de empezar. */
+    const sel = window.getSelection && window.getSelection();
+    if(sel && sel.rangeCount) sel.removeAllRanges();
 
     /* Estirar engancha al momento —el dedo ya está sobre un tirador, la
        intención no admite duda—. Mover pide medio segundo, para que al
@@ -3241,6 +3254,11 @@ function montarArrastre(el){
       espera = setTimeout(()=>{
         armado = true;
         el.classList.add('listo');
+        /* A partir de aquí el gesto es nuestro en los dos ejes. Sin esto,
+           el movimiento vertical lo interpretaba el navegador como
+           desplazamiento de página y era imposible pasar un coche a otra
+           plaza: el arrastre se cancelaba a mitad. */
+        el.style.touchAction = 'none';
         if(navigator.vibrate) navigator.vibrate(12);
       }, 450);
     }
@@ -3290,11 +3308,12 @@ function montarArrastre(el){
   el.addEventListener('pointerup', ev=>{
     clearTimeout(espera);
     el.classList.remove('listo');
+    el.style.touchAction='';
     if(!t0){ if(!moviendo && !cancelado) toque(); return; }
     const trabajo=t0;
     t0=null;
     el.classList.remove('arrastrando');
-    el.style.transform=''; el.style.width=''; el.style.left='';
+    el.style.transform=''; el.style.width=''; el.style.left=''; el.style.touchAction='';
 
     if(!moviendo){ toque(); return; }
 
@@ -3363,8 +3382,12 @@ function montarArrastre(el){
   el.addEventListener('pointercancel', ()=>{
     clearTimeout(espera); t0=null;
     el.classList.remove('arrastrando'); el.classList.remove('listo');
-    el.style.transform=''; el.style.width=''; el.style.left='';
+    el.style.transform=''; el.style.width=''; el.style.left=''; el.style.touchAction='';
   });
+  /* Última barrera: aunque el navegador ignore el CSS, aquí no empieza
+     ninguna selección. */
+  el.addEventListener('selectstart', ev=>ev.preventDefault());
+  el.addEventListener('contextmenu', ev=>{ if(tactil) ev.preventDefault(); });
 
   /* Doble clic de ratón. Con el dedo no hace falta: el doble toque ya se
      resuelve arriba, y si no se filtra aquí la ficha se abriría dos veces. */
@@ -3385,6 +3408,13 @@ const SIGUIENTE = [
   {k:'sinrecoger', t:'Listo, sin recoger',  ico:'✓'},
   {k:'entregado',  t:'Entregado y cerrado', ico:'✓✓'}
 ];
+
+/* En una tablet el teclado ocupa media pantalla. Que salte solo al abrir
+   un panel tapa el formulario antes de que se haya leído nada. Con el dedo
+   se deja que sea la persona quien decida cuándo escribir; con ratón, donde
+   el teclado no estorba, se enfoca como siempre. */
+const conDedo = () => !!(window.matchMedia && window.matchMedia('(hover:none)').matches);
+function enfocar(sel){ if(conDedo()) return; const el=$(sel); if(el) el.focus(); }
 
 function abrirAcciones(id){
   const t = D.trabajos.find(x=>x.id===id);
@@ -3522,7 +3552,7 @@ function abrirCobroRapido(trabajoId, sugerido){
   $('#hoja').classList.add('on');
   $('#hojaC').querySelectorAll('[data-via]').forEach(b=>b.addEventListener('click',()=>{
     const imp=numero($('#cr-imp').value);
-    if(!imp){ $('#cr-imp').focus(); return; }
+    if(!imp){ const e=$('#cr-imp'); if(e) e.focus(); return; }
     D.cobros.push({id:nid(), trabajoId:t.id, importe:imp, via:b.dataset.via,
       facturado:llevaImpuestos(b.dataset.via),
       fecha:aIso(hoy), concepto:`${t.coche} · ${t.servicio}`});
@@ -3565,7 +3595,7 @@ function abrirGasto(id){
       ${editG?`<button class="btn borrar" type="button" id="g-del">Eliminar</button>`:''}
       <button class="btn pri" type="button" id="g-ok">Guardar</button></div>`;
   $('#hoja').classList.add('on');
-  $('#g-con').focus();
+  enfocar('#g-con');
 
   /* Desglose en vivo. En el alquiler la diferencia entre lo que se le paga
      al casero y lo que cuesta de verdad son cientos de euros al mes. */
@@ -3638,7 +3668,7 @@ function abrirIngreso(id){
       <button class="btn" type="button" data-cerrar>Cancelar</button>
       ${editI?`<button class="btn borrar" type="button" id="i-del">Eliminar</button>`:''}
       <button class="btn pri" type="button" id="i-ok">Guardar</button></div>`;
-  $('#hoja').classList.add('on'); $('#i-con').focus();
+  $('#hoja').classList.add('on'); enfocar('#i-con');
 
   /* Desglose en vivo: cuanto de lo que entra es base y cuanto es IVA. */
   function desglose(){
@@ -3688,7 +3718,7 @@ function abrirFijo(id){
       <button class="btn" type="button" data-cerrar>Cancelar</button>
       ${editF?`<button class="btn borrar" type="button" id="f-del">Eliminar</button>`:''}
       <button class="btn pri" type="button" id="f-ok">Guardar</button></div>`;
-  $('#hoja').classList.add('on'); $('#f-con').focus();
+  $('#hoja').classList.add('on'); enfocar('#f-con');
   $('#f-ok').addEventListener('click',()=>{
     const d={concepto:$('#f-con').value.trim()||'Sin concepto', importe:numero($('#f-imp').value),
       dia:Math.max(1,Math.min(28,+$('#f-dia').value||1)), categoria:$('#f-cat').value, via:$('#f-via').value};
@@ -3797,7 +3827,7 @@ function abrirPlaza(id){
       <button class="btn" type="button" data-cerrar>Cancelar</button>
       ${p?`<button class="btn borrar" type="button" id="p-del">Eliminar</button>`:''}
       <button class="btn pri" type="button" id="p-ok">Guardar</button></div>`;
-  $('#hoja').classList.add('on'); $('#p-nom').focus();
+  $('#hoja').classList.add('on'); enfocar('#p-nom');
   $('#p-ok').addEventListener('click',()=>{
     const d={nom:$('#p-nom').value.trim()||'Plaza', uso:$('#p-uso').value.trim(), libre:$('#p-libre').value==='1'};
     if(p) Object.assign(p,d);
@@ -3825,10 +3855,10 @@ function abrirServicio(id){
       <button class="btn" type="button" data-cerrar>Cancelar</button>
       ${x?`<button class="btn borrar" type="button" id="s-del">Eliminar</button>`:''}
       <button class="btn pri" type="button" id="s-ok">Guardar</button></div>`;
-  $('#hoja').classList.add('on'); $('#s-nom').focus();
+  $('#hoja').classList.add('on'); enfocar('#s-nom');
   $('#s-ok').addEventListener('click',()=>{
     const d={n:$('#s-nom').value.trim(), d:Math.max(1,+$('#s-dias').value||1), p:numero($('#s-pre').value)};
-    if(!d.n){ $('#s-nom').focus(); return; }
+    if(!d.n){ const e=$('#s-nom'); if(e) e.focus(); return; }
     if(x) Object.assign(x,d); else D.servicios.push(Object.assign({id:nid()},d));
     cerrar(); guardar(); pintar();
   });
@@ -4008,6 +4038,15 @@ function pintar(){
         const hay = [...g.querySelectorAll('tr[data-q]')].some(r=>r.style.display!=='none');
         g.style.display = hay ? '' : 'none';
       });
+    });
+  });
+  /* Refuerzo por código: en iPad, mantener pulsado sobre la rejilla abre
+     el selector de texto aunque el CSS lo prohíba. Cortarlo en el propio
+     evento es lo único que funciona en todas las versiones. */
+  c.querySelectorAll('.rej').forEach(r=>{
+    r.addEventListener('selectstart', ev=>ev.preventDefault());
+    r.addEventListener('contextmenu', ev=>{
+      if(ev.pointerType === 'touch' || !ev.pointerType) ev.preventDefault();
     });
   });
   c.querySelectorAll('.rej-pista[data-plaza]').forEach(p=>p.addEventListener('click',ev=>{
