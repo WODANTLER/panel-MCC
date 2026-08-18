@@ -166,11 +166,13 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .res.sel .tira::after{opacity:1;left:50%;top:50%;transform:translate(-50%,-50%);
   width:17px;height:17px;border-radius:50%;background:#fff;
   border:2.5px solid var(--tinta);box-shadow:0 1px 5px rgba(20,20,26,.35)}
-/* En pantalla táctil los tiradores solo existen si está seleccionada:
-   así el dedo no los pilla por accidente al ir a mover el coche. */
+/* En pantalla táctil NO hay tiradores: un dedo de 40 px sobre un tirador
+   de borde nunca va a ser preciso, por grande que se haga. Con el dedo la
+   barra entera MUEVE y nada más; la duración se cambia con los botones
+   − / + que aparecen al seleccionar. Cero ambigüedad, cero gestos que se
+   pisan. Los tiradores quedan solo para el ratón, que sí es preciso. */
 @media(hover:none){
-  .res .tira{pointer-events:none}
-  .res.sel .tira{pointer-events:auto}
+  .res .tira{display:none}
 }
 /* Aviso visual de que ya se puede arrastrar, tras mantener pulsado. */
 .res.listo{box-shadow:0 0 0 3px var(--oro);z-index:15}
@@ -183,6 +185,21 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
   font-weight:600;letter-spacing:.04em;padding:4px 9px;border-radius:3px;
   white-space:nowrap;pointer-events:none;z-index:30;
   box-shadow:0 3px 10px rgba(20,20,26,.3)}
+/* Barrita − / + al seleccionar: la duración REAL del trabajo (aunque la
+   barra se vea recortada porque sigue en la semana siguiente) y dos
+   botones grandes para cambiarla de día en día, exactos, sin arrastres. */
+.mini-dias{position:absolute;top:-48px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:stretch;background:var(--tinta);color:#fff;
+  border-radius:5px;box-shadow:0 5px 16px rgba(20,20,26,.38);z-index:31;
+  font-family:var(--mono);user-select:none;-webkit-user-select:none;
+  -webkit-touch-callout:none;touch-action:none}
+.mini-dias .md-b{min-width:42px;display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:700;cursor:pointer;padding:9px 0}
+.mini-dias .md-b:active{background:rgba(255,255,255,.2)}
+.mini-dias .md-n{display:flex;align-items:center;padding:0 8px;font-size:11.5px;
+  font-weight:600;letter-spacing:.03em;white-space:nowrap;
+  border-left:1px solid rgba(255,255,255,.22);
+  border-right:1px solid rgba(255,255,255,.22)}
 /* Tiradores de los extremos: estiran o acortan la estancia. */
 .tira{position:absolute;top:0;bottom:0;width:14px;cursor:ew-resize;z-index:2;
   touch-action:none}    /* estirar nunca desplaza la página */
@@ -1410,7 +1427,12 @@ function vistaPlazas(){
               ${viene?'':'<span class="tira izq" data-tira="izq"></span>'}
               ${sigue?'':'<span class="tira der" data-tira="der"></span>'}
               <b>${esc(t.coche)}</b>`
-          + (n>=4&&pd?`<i>${eur(pd)} €/día</i>`:'') + `</button>`;
+          /* Si la barra se ve recortada porque el trabajo sigue en otra
+             semana, se declara la duración real ahí mismo: una barra de
+             un cuadradito puede ser un trabajo de 9 días que continúa. */
+          + (viene||sigue
+              ? `<i>${viene?'‹ ':''}${t.dias} días${sigue?' ›':''}</i>`
+              : (n>=4&&pd?`<i>${eur(pd)} €/día</i>`:'')) + `</button>`;
       });
       h+=`</div></div>`;
     });
@@ -3202,47 +3224,89 @@ function diaEnPista(pista, clientX){
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   ARRASTRE DE RESERVAS
+   ARRASTRE DE RESERVAS — modelo definitivo de gestos
 
-   Tres gestos, cada uno con su intención clara:
+   CON EL DEDO (tablet):
+     un toque        → selecciona: marco + barrita  [−  N días  +]
+     − / +           → cambia la duración de día en día, exacto
+     arrastrar (sel) → mueve de día o de plaza, engancha al instante
+     mantener+mover  → mueve aunque no esté seleccionada (medio segundo)
+     dos toques      → abre la ficha del coche
+     La duración NUNCA se cambia arrastrando con el dedo: un dedo de
+     40 px sobre un tirador de borde no puede ser preciso, y cada intento
+     de hacerlo convivir con "mover" acabó con los gestos pisándose y
+     reservas de 3 días convertidas en 1 (o en 9). Botones: exactos.
 
-     un toque       → selecciona. Solo entonces aparecen los tiradores.
-     dos toques     → abre la ficha del coche.
-     mantener+mover → cambia el coche de día o de plaza.
+   CON RATÓN:
+     los tiradores de los bordes estiran (bolitas al seleccionar), la
+     barra mueve, doble clic abre la ficha. La barrita −/+ también está.
 
-   El motivo de exigir la selección para estirar: los tiradores miden
-   14 px y un dedo cubre 40. Antes, al ir a mover un coche por el borde,
-   el toque caía en el tirador sin que se notara y lo que parecía un
-   desplazamiento acababa recortando la estancia —de ahí que una reserva
-   de tres días quedara en uno—. Con la selección de por medio, mientras
-   no esté seleccionada la barra entera mueve y nada más.
-
-   Y tres reglas que sostienen la precisión:
-
-   1. Seleccionada, los tiradores son bolitas visibles centradas en el
-      borde: la mitad queda FUERA de la barra. El cuerpo entero mueve;
-      solo la bolita estira. Antes el tirador invisible comía 20 px del
-      interior y el dedo lo pillaba al ir a mover.
-   2. Se guarda EXACTAMENTE lo que se ve. El salto de días se calcula
-      mientras se arrastra, con un margen de histéresis para que no
-      titubee entre dos días, y al soltar se aplica ese mismo valor: nada
-      se recalcula con la posición del dedo al levantarlo, que en la
-      tablet siempre se corre unos píxeles.
-   3. Mientras hay un gesto en marcha la rejilla NO se repinta. Firestore
-      devuelve cada guardado como un snapshot y el repintado destruía la
-      barra en mitad del arrastre; ahora espera a que el dedo suelte.
+   Tres reglas que sostienen la precisión:
+   1. Se guarda EXACTAMENTE lo que se ve: el salto se calcula durante el
+      arrastre con histéresis (no titubea entre dos días) y al soltar se
+      aplica ese mismo valor, nunca la posición del dedo al levantarse.
+   2. Mientras hay un gesto en marcha la rejilla NO se repinta: Firestore
+      devuelve cada guardado como snapshot y el repintado destruía la
+      barra en mitad del arrastre.
+   3. Una barra recortada por el cambio de semana declara sus días reales
+      («9 días ›»): lo que se ve corto puede ser un trabajo largo que
+      continúa la semana siguiente. Eso no es un fallo, es el calendario.
    ═══════════════════════════════════════════════════════════════════════ */
 let resSel = null;          // id de la reserva seleccionada
 let gestoEnCurso = false;   // hay un dedo arrastrando: no repintar
 let repintaPend  = false;   // llegó un cambio durante el gesto
 function flushRepinta(){ if(repintaPend){ repintaPend=false; pintar(); } }
 
-function seleccionarRes(id){
+let resSelLun = null;      // semana del trozo tocado, para poner ahí la barrita
+function seleccionarRes(id, tocado){
   resSel = id;
-  document.querySelectorAll('.res.sel').forEach(x=>x.classList.remove('sel'));
-  if(!id) return;
-  const el = document.querySelector(`.res[data-t="${id}"]`);
-  if(el) el.classList.add('sel');
+  document.querySelectorAll('.res.sel').forEach(x=>{
+    x.classList.remove('sel');
+    const tb=x.querySelector('.mini-dias'); if(tb) tb.remove();
+  });
+  if(!id){ resSelLun=null; return; }
+  if(tocado){
+    const p = tocado.closest('.rej-pista');
+    resSelLun = p ? p.dataset.lunes : null;
+  }
+  /* Un trabajo largo pinta un trozo de barra en cada semana: se marcan
+     todos, y la barrita −/+ va sobre el trozo que se tocó (o el primero). */
+  const trozos = [...document.querySelectorAll(`.res[data-t="${id}"]`)];
+  trozos.forEach(x=>x.classList.add('sel'));
+  const pref = trozos.find(x=>{
+    const p=x.closest('.rej-pista'); return p && p.dataset.lunes===resSelLun;
+  }) || trozos[0];
+  if(pref) montarMiniDias(pref, id);
+}
+
+/* La barrita de arriba de la reserva seleccionada: dice los días REALES
+   del trabajo (la barra puede verse corta porque el resto cae en la
+   semana siguiente) y los cambia de uno en uno. En la tablet esto
+   sustituye por completo al estirado con el dedo. */
+function montarMiniDias(el, id){
+  const t = D.trabajos.find(x=>x.id===id);
+  if(!t || el.querySelector('.mini-dias')) return;
+  const tb = document.createElement('span');
+  tb.className = 'mini-dias';
+  tb.innerHTML = `<span class="md-b" data-md="-1">−</span>`
+    + `<span class="md-n">${t.dias} ${t.dias===1?'día':'días'}</span>`
+    + `<span class="md-b" data-md="1">+</span>`;
+  tb.addEventListener('click', ev=>{
+    ev.stopPropagation(); ev.preventDefault();
+    const b = ev.target.closest ? ev.target.closest('[data-md]') : null;
+    if(b) cambiarDias(id, +b.dataset.md);
+  });
+  el.appendChild(tb);
+}
+
+function cambiarDias(id, delta){
+  const t = D.trabajos.find(x=>x.id===id); if(!t) return;
+  const nuevos = Math.max(1, t.dias + delta);
+  if(nuevos === t.dias) return;
+  const ch = pisaA({...t, dias:nuevos}, t.entra, nuevos);
+  if(ch.length && !confirm(`Así pisa a ${ch.map(o=>o.coche).join(' y ')}.\n¿Lo dejas igual?`)) return;
+  t.dias = nuevos;
+  guardar(); pintar();      // pintar reconstruye la barrita con el número nuevo
 }
 /* Un toque fuera deselecciona: si no, los tiradores se quedan puestos y
    vuelve el riesgo de estirar sin querer. */
@@ -3272,6 +3336,8 @@ function montarArrastre(el){
   function quitaChip(){ if(chip){ chip.remove(); chip=null; } }
 
   el.addEventListener('pointerdown', ev=>{
+    /* Los toques en la barrita −/+ son botones, no gestos. */
+    if(ev.target && ev.target.closest && ev.target.closest('.mini-dias')) return;
     if(ev.button !== undefined && ev.button !== 0) return;
     if(gestoEnCurso) return;                     // un dedo a la vez
     t0 = D.trabajos.find(x=>x.id===el.dataset.t);
@@ -3338,6 +3404,11 @@ function montarArrastre(el){
       return;
     }
     if(!moviendo && Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+    if(!moviendo){
+      /* Empieza el arrastre de verdad: la barrita −/+ se quita para que
+         no viaje pegada a la barra; pintar() la recrea al soltar. */
+      const tb = el.querySelector('.mini-dias'); if(tb) tb.remove();
+    }
     moviendo=true;
     ev.preventDefault();
     el.classList.add('arrastrando');
@@ -3350,7 +3421,8 @@ function montarArrastre(el){
       saltoDias  = encajar(dx/anchoDia, saltoDias);
       saltoFilas = encajar(dy/altoFila, saltoFilas);
       el.style.transform = `translate(${saltoDias*anchoDia}px, ${saltoFilas*altoFila}px)`;
-      ponChip('entra '+fCorta(sumar(aFecha(t0.entra), saltoDias)));
+      ponChip('entra '+fCorta(sumar(aFecha(t0.entra), saltoDias))
+              +' · '+t0.dias+(t0.dias===1?' día':' días'));
     }else if(modo==='der'){
       saltoDias = encajar(dx/anchoDia, saltoDias);
       diasPrev  = Math.max(1, t0.dias + saltoDias);
@@ -3369,6 +3441,7 @@ function montarArrastre(el){
   });
 
   el.addEventListener('pointerup', ev=>{
+    if(ev.target && ev.target.closest && ev.target.closest('.mini-dias')){ flushRepinta(); return; }
     clearTimeout(espera);
     el.classList.remove('listo');
     el.style.touchAction='';
@@ -3442,7 +3515,7 @@ function montarArrastre(el){
       return;
     }
     ultimoToque = ahora;
-    seleccionarRes(resSel === id ? null : id);
+    seleccionarRes(resSel === id ? null : id, el);
   }
 
   el.addEventListener('pointercancel', ()=>{
@@ -3460,6 +3533,7 @@ function montarArrastre(el){
   /* Doble clic de ratón. Con el dedo no hace falta: el doble toque ya se
      resuelve arriba, y si no se filtra aquí la ficha se abriría dos veces. */
   el.addEventListener('dblclick', ev=>{
+    if(ev.target && ev.target.closest && ev.target.closest('.mini-dias')) return;
     if(tactil) return;
     ev.preventDefault();
     abrirAcciones(el.dataset.t);
