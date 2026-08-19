@@ -169,13 +169,21 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 .res.sel .tira::after{opacity:1;left:50%;top:50%;transform:translate(-50%,-50%);
   width:17px;height:17px;border-radius:50%;background:#fff;
   border:2.5px solid var(--tinta);box-shadow:0 1px 5px rgba(20,20,26,.35)}
-/* En pantalla táctil NO hay tiradores: un dedo de 40 px sobre un tirador
-   de borde nunca va a ser preciso, por grande que se haga. Con el dedo la
-   barra entera MUEVE y nada más; la duración se cambia con los botones
-   − / + que aparecen al seleccionar. Cero ambigüedad, cero gestos que se
-   pisan. Los tiradores quedan solo para el ratón, que sí es preciso. */
+/* En pantalla táctil, la reserva seleccionada y con sitio (≥2 celdas)
+   muestra dos tiradores GRANDES que sobresalen por fuera de la barra: la
+   bolita queda medio afuera, así el dedo distingue sin ambigüedad "estirar
+   por el borde" de "mover por el centro". En barras estrechas no se
+   muestran (no habría centro para mover): ahí se estira con − / +. */
 @media(hover:none){
   .res .tira{display:none}
+  .res.sel.ancha .tira{display:block;width:48px;height:48px;top:50%;bottom:auto;
+    transform:translateY(-50%);background:transparent;z-index:16}
+  .res.sel.ancha .tira.izq{left:-24px}
+  .res.sel.ancha .tira.der{right:-24px}
+  .res.sel.ancha .tira::after{content:"";position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);opacity:1;
+    width:22px;height:22px;border-radius:50%;background:#fff;
+    border:3px solid var(--tinta);box-shadow:0 2px 7px rgba(20,20,26,.4)}
 }
 /* Aviso visual de que ya se puede arrastrar, tras mantener pulsado. */
 .res.listo{box-shadow:0 0 0 3px var(--oro);z-index:15}
@@ -1477,7 +1485,7 @@ function vistaPlazas(){
         const n=d1-d0+1; if(n<=0) return;
         const viene=e<l, sigue=sa>f;                // el trabajo cruza la semana
         const pd=t.presupuesto?Math.round(t.presupuesto/Math.max(1,t.dias)):0;
-        h+=`<button class="res ${t.estado}${viene?' viene':''}${sigue?' sigue':''}${t.avisarCliente?' avisar':''}${p.libre?' enreserva':''}" data-t="${t.id}"
+        h+=`<button class="res ${t.estado}${viene?' viene':''}${sigue?' sigue':''}${n>=2?' ancha':''}${t.avisarCliente?' avisar':''}${p.libre?' enreserva':''}" data-t="${t.id}"
               style="left:${(d0/7*100).toFixed(4)}%;width:${(n/7*100).toFixed(4)}%"
               title="${esc(t.coche)} · ${esc(t.servicio)} · ${fCorta(e)} a ${fCorta(sa)}">
               ${viene?'':'<span class="tira izq" data-tira="izq"></span>'}
@@ -3420,158 +3428,165 @@ function celdaBajo(el, cx, cy){
   return { fecha:cel.dataset.f, plaza:+pista.dataset.plaza };
 }
 
+/* Contexto del arrastre activo, a nivel de módulo. Antes cada barra tenía
+   sus propios listeners de move/up con setPointerCapture. En el iPad la
+   captura de puntero se pierde a mitad de gesto en cuanto el dedo sale de
+   la barra, y entonces los eventos dejaban de llegar: el arrastre se
+   quedaba "a medias", movía errático o no estiraba. La solución robusta es
+   escuchar move/up/cancel en el DOCUMENTO, no en cada barra: al documento
+   los eventos llegan siempre, haya o no captura. */
+const arr = { el:null, t:null, x0:0, y0:0, pid:null, moviendo:false,
+  modo:'mover', tactil:false, grabOffset:0,
+  diasPrev:0, entraPrev:'', dPlaza:null, dEntra:null };
+const ultimoToque = new WeakMap();   // doble toque por barra
+
+function cerrarArrastre(){
+  arr.el=null; arr.t=null; arr.moviendo=false; arr.pid=null;
+  gestoEnCurso=false;
+  limpiarDrop();
+}
+
 function montarArrastre(el){
-  let t0=null, x0=0, y0=0, moviendo=false, modo='mover',
-      anchoDia=0, base=null, tactil=false, armado=false,
-      cancelado=false, grabOffset=0,
-      saltoDias=0, diasPrev=0, entraPrev='',   // solo para estirar con ratón
-      dPlaza=null, dEntra=null;                // destino vivo del movimiento
-
-  const encajar = (crudo, actual) =>
-    Math.abs(crudo - actual) > 0.55 ? Math.round(crudo) : actual;
-
   el.addEventListener('pointerdown', ev=>{
     if(ev.target && ev.target.closest && ev.target.closest('.mini-dias')) return;
     if(ev.button !== undefined && ev.button !== 0) return;
-    if(ev.isPrimary === false) return;            // segundo dedo: se ignora
-    if(gestoEnCurso) return;                       // un gesto a la vez
-    t0 = D.trabajos.find(x=>x.id===el.dataset.t);
-    if(!t0) return;
-    t0.dias = Math.max(1, Math.round(+t0.dias) || 1);
+    if(ev.isPrimary === false) return;             // segundo dedo: se ignora
+    if(gestoEnCurso) return;                        // un gesto a la vez
+    const t = D.trabajos.find(x=>x.id===el.dataset.t);
+    if(!t) return;
+    t.dias = Math.max(1, Math.round(+t.dias) || 1);
     const pista = el.closest('.rej-pista');
     if(!pista) return;
-    tactil = ev.pointerType === 'touch';
+
     gestoEnCurso = true;
+    arr.el = el; arr.t = t; arr.pid = ev.pointerId;
+    arr.tactil = ev.pointerType === 'touch';
+    arr.x0 = ev.clientX; arr.y0 = ev.clientY;
+    arr.moviendo = false;
 
-    /* Estirar solo con ratón, sobre un tirador. Con el dedo, siempre mover. */
+    /* Estirar: con ratón siempre (sobre un tirador); con el dedo, solo si
+       la reserva está seleccionada (ahí los tiradores son bolitas grandes
+       que sobresalen). En cualquier otro caso el gesto es mover. */
     const enTira = (ev.target && ev.target.dataset && ev.target.dataset.tira) || null;
-    modo = (!tactil && enTira) ? enTira : 'mover';
+    const seleccionada = el.classList.contains('sel');
+    arr.modo = (enTira && (!arr.tactil || seleccionada)) ? enTira : 'mover';
 
-    const sel = window.getSelection && window.getSelection();
-    if(sel && sel.rangeCount) sel.removeAllRanges();
+    const s = window.getSelection && window.getSelection();
+    if(s && s.rangeCount) s.removeAllRanges();
 
-    /* Día de la barra por el que se agarró, para que al mover no salte. Se
-       saca de la celda real bajo el dedo; si no la hay, del ancho. */
-    anchoDia = pista.getBoundingClientRect().width / 7;
+    /* Día de la barra por el que se agarró, para que al mover no salte. */
     const info = celdaBajo(el, ev.clientX, ev.clientY);
-    grabOffset = info ? diasEntre(aFecha(t0.entra), aFecha(info.fecha)) : 0;
-    grabOffset = Math.max(0, Math.min(t0.dias-1, grabOffset));
+    arr.grabOffset = info ? diasEntre(aFecha(t.entra), aFecha(info.fecha)) : 0;
+    arr.grabOffset = Math.max(0, Math.min(t.dias-1, arr.grabOffset));
 
-    /* El gesto es nuestro desde ya (touch-action:none en el CSS). No hace
-       falta mantener pulsado; un toque sin desplazamiento sigue siendo toque. */
-    armado = true;
-    x0=ev.clientX; y0=ev.clientY;
-    base = {left: el.offsetLeft, width: el.offsetWidth};
-    moviendo=false; cancelado=false;
-    saltoDias=0; diasPrev=t0.dias; entraPrev=t0.entra;
-    dPlaza=t0.plaza; dEntra=t0.entra;
-    el.setPointerCapture(ev.pointerId);
+    arr.diasPrev = t.dias; arr.entraPrev = t.entra;
+    arr.dPlaza = t.plaza;  arr.dEntra = t.entra;
+    /* No hace falta setPointerCapture: el documento recibe los eventos igual
+       y la captura en iPad es justamente lo que fallaba. */
   });
 
-  el.addEventListener('pointermove', ev=>{
-    if(!t0 || !armado) return;
-    const dx=ev.clientX-x0, dy=ev.clientY-y0;
-    if(!moviendo && Math.abs(dx) < 10 && Math.abs(dy) < 10) return;  // aún puede ser un toque
-    if(!moviendo){
-      const tb=el.querySelector('.mini-dias'); if(tb) tb.remove();
-      el.classList.add('arrastrando');
-      document.body.classList.add('arrastrando-on');
-    }
-    moviendo=true;
-    ev.preventDefault();
-
-    if(modo==='mover'){
-      /* Destino = celda bajo el dedo − el día por el que se agarró. Si el
-         dedo se sale de la rejilla, se conserva el último destino válido. */
-      const info = celdaBajo(el, ev.clientX, ev.clientY);
-      if(info){
-        dPlaza = info.plaza;
-        dEntra = aIso(sumar(aFecha(info.fecha), -grabOffset));
-      }
-      const choca = pisaA({...t0, plaza:dPlaza}, dEntra, t0.dias);
-      pintarDrop(dPlaza, dEntra, t0.dias, choca.length>0);
-      const f1=aFecha(dEntra), f2=sumar(f1, t0.dias-1);
-      chipDestino(`${nombrePlaza(dPlaza)} · ${fCorta(f1)}${t0.dias>1?' – '+fCorta(f2):''}`, choca.length>0);
-      return;
-    }
-
-    /* Estirar (solo ratón): vista previa en píxeles sobre la propia barra. */
-    saltoDias = encajar(dx/anchoDia, saltoDias);
-    if(modo==='der'){
-      diasPrev = Math.max(1, t0.dias + saltoDias); entraPrev = t0.entra;
-      el.style.width = Math.max(26, base.width + (diasPrev - t0.dias)*anchoDia)+'px';
-    }else{
-      diasPrev = Math.max(1, t0.dias - saltoDias);
-      const corr = t0.dias - diasPrev;
-      entraPrev = aIso(sumar(aFecha(t0.entra), corr));
-      el.style.left  = (base.left + corr*anchoDia)+'px';
-      el.style.width = Math.max(26, base.width - corr*anchoDia)+'px';
-    }
-    const choca = pisaA({...t0, entra:entraPrev, dias:diasPrev}, entraPrev, diasPrev);
-    chipDestino(diasPrev + (diasPrev===1?' día':' días'), choca.length>0);
-  });
-
-  el.addEventListener('pointerup', ev=>{
-    if(ev.target && ev.target.closest && ev.target.closest('.mini-dias')){ flushRepinta(); return; }
-    el.classList.remove('listo');
-    gestoEnCurso=false;
-    limpiarDrop();
-    if(!t0){ if(!moviendo && !cancelado) toque(); flushRepinta(); return; }
-    const trabajo=t0; t0=null;
-    el.classList.remove('arrastrando');
-    el.style.transform=''; el.style.width=''; el.style.left='';
-
-    if(!moviendo){ toque(); flushRepinta(); return; }
-
-    if(modo!=='mover'){
-      /* estirar con ratón: se aplica exactamente la vista previa */
-      if(diasPrev!==trabajo.dias || entraPrev!==trabajo.entra){
-        const cand={...trabajo, entra:entraPrev, dias:diasPrev};
-        const ch=pisaA(cand, entraPrev, diasPrev);
-        if(ch.length && !confirm(`Así pisa a ${ch.map(o=>o.coche).join(' y ')}.\n¿Lo dejas igual?`)){ pintar(); return; }
-        trabajo.entra=entraPrev; trabajo.dias=diasPrev; guardar();
-      }
-      pintar(); return;
-    }
-
-    /* mover: el destino es el resaltado (dPlaza/dEntra), por la celda bajo
-       el dedo. Nada de recalcular con la posición al soltar. */
-    if(dPlaza===trabajo.plaza && dEntra===trabajo.entra){ pintar(); return; }   // no se movió
-    const choca = pisaA({...trabajo, plaza:dPlaza}, dEntra, trabajo.dias);
-    if(choca.length && !confirm(`Ahí ya está ${choca.map(o=>o.coche).join(' y ')}.\n¿Lo pones igual?`)){ pintar(); return; }
-    trabajo.entra = dEntra;
-    trabajo.plaza = dPlaza;
-    guardar(); pintar();
-  });
-
-  /* Un toque selecciona; dos seguidos abren la ficha (margen 320 ms). */
-  let ultimoToque = 0;
-  function toque(){
-    const id = el.dataset.t;
-    const ahora = Date.now();
-    if(ahora - ultimoToque < 320){
-      ultimoToque = 0; seleccionarRes(null); abrirAcciones(id); return;
-    }
-    ultimoToque = ahora;
-    seleccionarRes(resSel === id ? null : id);
-  }
-
-  el.addEventListener('pointercancel', ()=>{
-    t0=null;
-    gestoEnCurso=false; limpiarDrop();
-    el.classList.remove('arrastrando'); el.classList.remove('listo');
-    el.style.transform=''; el.style.width=''; el.style.left='';
-    flushRepinta();
-  });
   el.addEventListener('selectstart', ev=>ev.preventDefault());
-  el.addEventListener('contextmenu', ev=>{ if(tactil) ev.preventDefault(); });
+  el.addEventListener('contextmenu', ev=>{ if(arr.tactil || (window.matchMedia&&matchMedia('(hover:none)').matches)) ev.preventDefault(); });
   el.addEventListener('dblclick', ev=>{
     if(ev.target && ev.target.closest && ev.target.closest('.mini-dias')) return;
-    if(tactil) return;
+    if(window.matchMedia && matchMedia('(hover:none)').matches) return;  // táctil: lo maneja el doble toque
     ev.preventDefault();
     abrirAcciones(el.dataset.t);
   });
 }
+
+/* ── movimiento del arrastre, a nivel de documento ────────────────────── */
+document.addEventListener('pointermove', ev=>{
+  const el = arr.el;
+  if(!el || ev.pointerId !== arr.pid) return;
+  const t = arr.t;
+  const dx = ev.clientX - arr.x0, dy = ev.clientY - arr.y0;
+  if(!arr.moviendo && Math.abs(dx) < 10 && Math.abs(dy) < 10) return;  // aún puede ser un toque
+  if(!arr.moviendo){
+    const tb = el.querySelector('.mini-dias'); if(tb) tb.remove();
+    el.classList.add('arrastrando');
+    document.body.classList.add('arrastrando-on');
+  }
+  arr.moviendo = true;
+  ev.preventDefault();
+
+  if(arr.modo === 'mover'){
+    /* Destino = celda bajo el dedo − el día por el que se agarró. Si el
+       dedo se sale de la rejilla, se conserva el último destino válido. */
+    const info = celdaBajo(el, ev.clientX, ev.clientY);
+    if(info){
+      arr.dPlaza = info.plaza;
+      arr.dEntra = aIso(sumar(aFecha(info.fecha), -arr.grabOffset));
+    }
+    const choca = pisaA({...t, plaza:arr.dPlaza}, arr.dEntra, t.dias);
+    pintarDrop(arr.dPlaza, arr.dEntra, t.dias, choca.length>0);
+    const f1=aFecha(arr.dEntra), f2=sumar(f1, t.dias-1);
+    chipDestino(`${nombrePlaza(arr.dPlaza)} · ${fCorta(f1)}${t.dias>1?' – '+fCorta(f2):''}`, choca.length>0);
+    return;
+  }
+
+  /* Estirar por hit-testing: el borde arrastrado salta a la columna (fecha)
+     de la celda bajo el dedo; el otro borde queda fijo. Sin píxeles: es
+     imposible que "se ponga en 5 cuando querías 3". */
+  const info = celdaBajo(el, ev.clientX, ev.clientY);
+  if(info){
+    const cd = aFecha(info.fecha);
+    if(arr.modo === 'der'){
+      arr.diasPrev  = Math.max(1, diasEntre(aFecha(t.entra), cd) + 1);
+      arr.entraPrev = t.entra;
+    }else{
+      const sFin = salida(t);
+      arr.diasPrev  = Math.max(1, diasEntre(cd, sFin) + 1);
+      arr.entraPrev = aIso(sumar(sFin, -(arr.diasPrev-1)));
+    }
+  }
+  const choca = pisaA({...t, entra:arr.entraPrev, dias:arr.diasPrev}, arr.entraPrev, arr.diasPrev);
+  pintarDrop(t.plaza, arr.entraPrev, arr.diasPrev, choca.length>0);
+  const g1=aFecha(arr.entraPrev), g2=sumar(g1, arr.diasPrev-1);
+  chipDestino(`${arr.diasPrev} ${arr.diasPrev===1?'día':'días'} · ${fCorta(g1)} – ${fCorta(g2)}`, choca.length>0);
+}, {passive:false});
+
+document.addEventListener('pointerup', ev=>{
+  const el = arr.el;
+  if(!el || ev.pointerId !== arr.pid) return;
+  const t = arr.t, moviendo = arr.moviendo, modo = arr.modo;
+  const diasPrev = arr.diasPrev, entraPrev = arr.entraPrev;
+  const dPlaza = arr.dPlaza, dEntra = arr.dEntra;
+  el.classList.remove('arrastrando');
+  cerrarArrastre();
+
+  if(!moviendo){
+    /* Fue un toque: seleccionar / doble-toque abre ficha. */
+    if(ev.target && ev.target.closest && ev.target.closest('.mini-dias')){ flushRepinta(); return; }
+    const id = el.dataset.t, ahora = Date.now(), prev = ultimoToque.get(el) || 0;
+    if(ahora - prev < 320){ ultimoToque.set(el, 0); seleccionarRes(null); abrirAcciones(id); }
+    else { ultimoToque.set(el, ahora); seleccionarRes(resSel === id ? null : id); }
+    flushRepinta(); return;
+  }
+
+  if(modo !== 'mover'){
+    if(diasPrev!==t.dias || entraPrev!==t.entra){
+      const ch = pisaA({...t, entra:entraPrev, dias:diasPrev}, entraPrev, diasPrev);
+      if(ch.length && !confirm(`Así pisa a ${ch.map(o=>o.coche).join(' y ')}.\n¿Lo dejas igual?`)){ pintar(); return; }
+      t.entra = entraPrev; t.dias = diasPrev; guardar();
+    }
+    pintar(); return;
+  }
+
+  /* mover: destino resaltado (dPlaza/dEntra), por la celda bajo el dedo. */
+  if(dPlaza===t.plaza && dEntra===t.entra){ pintar(); return; }   // no se movió
+  const choca = pisaA({...t, plaza:dPlaza}, dEntra, t.dias);
+  if(choca.length && !confirm(`Ahí ya está ${choca.map(o=>o.coche).join(' y ')}.\n¿Lo pones igual?`)){ pintar(); return; }
+  t.entra = dEntra; t.plaza = dPlaza; guardar(); pintar();
+});
+
+document.addEventListener('pointercancel', ev=>{
+  if(!arr.el || ev.pointerId !== arr.pid) return;
+  const el = arr.el;
+  el.classList.remove('arrastrando');
+  cerrarArrastre();
+  flushRepinta();
+});
 
 /* ─── acciones rápidas ─────────────────────────────────────────────────
    Pensado para tablet: un toque en la barra abre esto, no el formulario
