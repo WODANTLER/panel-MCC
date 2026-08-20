@@ -463,8 +463,15 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
 /* Las dos columnas comparten rejilla vertical: cabecera, subtítulo,
    selector, rueda y leyenda ocupan la misma altura en las dos, así los
    gráficos quedan a la misma altura pase lo que pase con el texto. */
+/* Columna simple: cada elemento ocupa su alto natural y se centra. No se
+   fuerzan alturas de fila porque los dos bloques no tienen las mismas
+   piezas —el de la derecha lleva una nota de más—, y al cuadricularlos la
+   rueda de cada uno caía a distinta altura. La rueda conserva su caja
+   cuadrada, así que su tamaño no depende de esto. */
 .rbloque{border:1px solid var(--linea2);background:#fff;padding:16px;
-  display:grid;grid-template-rows:26px 20px 34px auto auto;justify-items:center;gap:8px}
+  display:flex;flex-direction:column;align-items:center;gap:8px}
+.rbloque .rueda-caja{margin-top:auto}
+.rbloque .leyenda{margin-bottom:auto;width:100%}
 .rbloque-cab{display:grid;grid-template-columns:34px 1fr 34px;align-items:center;
   width:100%;gap:6px}
 .rbloque-cab b{grid-column:2;text-align:center;
@@ -477,6 +484,10 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
   font-family:var(--display);transition:border-color .16s,color .16s}
 .rbloque-cab .flecha:hover{border-color:var(--oro);color:var(--oro)}
 .rbloque-cab .flecha[disabled]{opacity:.28;cursor:not-allowed}
+/* Reservada en los dos bloques aunque solo el de la derecha la use: así
+   la rueda empieza a la misma altura en ambos. */
+.rbloque-nota{min-height:15px;font-family:var(--mono);font-size:10px;
+  color:var(--dim);text-align:center;letter-spacing:.04em}
 .rbloque-sub{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:center}
 .tri-sel,.mes-sel{display:flex;gap:1px;background:var(--linea);
   border:1px solid var(--linea);width:100%;overflow:hidden}
@@ -1558,6 +1569,7 @@ function vistaDinero(){
         <span class="rb-nav"></span>
       </div>
       <div class="rbloque-sub">${eur(rAnio.entra)} € entraron</div>
+      <div class="rbloque-nota"></div>
       ${rueda(partesDe(rAnio), eur(rAnio.libre)+' €', 'queda limpio')}
       ${leyenda(rAnio)}
     </section>
