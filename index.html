@@ -313,6 +313,19 @@ body.arrastrando-on .res{pointer-events:none}
 .tabla td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
 .tabla tr:hover td{background:var(--panel)}
 .pos{color:var(--oro)} .neg{color:var(--alerta)}
+/* Saldo a favor: verde, claro, un solo bloque. No es alerta ni oro. */
+.favor{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  margin:16px 0 4px;padding:14px 18px;border-radius:4px;
+  background:rgba(94,140,97,.10);border-left:3px solid #5E8C61}
+.favor-et{font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:#3f6b42}
+.favor b{font-family:var(--display);font-variation-settings:'wght' 700;
+  font-size:22px;color:#3f6b42;line-height:1}
+.favor-txt{font-size:12.5px;color:#4a6b4c;flex:1 1 240px;min-width:0}
+/* Nota chica bajo un número de la tabla (p. ej. "−120 compensado"). */
+.sub-num{display:block;font-family:var(--mono);font-size:9.5px;
+  color:#3f6b42;font-weight:400;margin-top:1px}
+.num.afavor{color:#3f6b42}
 .pill{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;
   text-transform:uppercase;padding:3px 7px;border:1px solid var(--linea2);color:var(--dim);
   background:var(--panel)}
@@ -544,12 +557,8 @@ body.arrastrando-on .res{pointer-events:none}
 /* Las dos columnas comparten rejilla vertical: cabecera, subtítulo,
    selector, rueda y leyenda ocupan la misma altura en las dos, así los
    gráficos quedan a la misma altura pase lo que pase con el texto. */
-/* Las filas ya no van fijas: cada bloque tiene un número distinto de
-   elementos (la izquierda no lleva la nota de abajo) y una rejilla de
-   cinco filas dejaba huecos que empujaban la rueda hacia arriba. Con
-   flex, cada parte ocupa lo suyo y la rueda se ancla en su sitio. */
 .rbloque{border:1px solid var(--linea2);background:#fff;padding:16px;
-  display:flex;flex-direction:column;align-items:center;gap:8px}
+  display:grid;grid-template-rows:26px 20px 34px auto 1fr;justify-items:center;gap:8px}
 .rbloque-cab{display:grid;grid-template-columns:34px 1fr 34px;align-items:center;
   width:100%;gap:6px}
 .rbloque-cab b{grid-column:2;text-align:center;
@@ -572,17 +581,20 @@ body.arrastrando-on .res{pointer-events:none}
 .tri-btn:hover{background:#fff;color:var(--tinta)}
 .tri-btn.on{background:var(--oro-suave);color:var(--oro);font-weight:600}
 .tri-btn:focus-visible{outline:2px solid var(--oro);outline-offset:-2px}
-.rueda{width:100%;max-width:210px;height:auto;margin:6px 0;flex:none}
-/* Sin atenuar el resto al pasar por encima: con arcos finos el
-   parpadeo daba sensación de movimiento. */
+.rueda{width:100%;max-width:210px;height:auto;margin:0;align-self:center}
 .rueda circle{transition:opacity .16s}
-.rueda circle:hover{opacity:.82}
+.rueda:hover circle{opacity:.55}
+.rueda circle:hover{opacity:1}
 .r-val{text-anchor:middle;font-family:var(--display);
   font-variation-settings:'wdth' 76,'wght' 700;font-size:21px;fill:var(--tinta)}
 .r-et{text-anchor:middle;font-family:var(--mono);font-size:8px;
   letter-spacing:.1em;text-transform:uppercase;fill:var(--dim)}
 
-.leyenda-r{list-style:none;margin:6px 0 0;padding:0;width:100%;margin-top:auto}
+.leyenda-r{list-style:none;margin:6px 0 0;padding:0;width:100%;align-self:start}
+.leyenda-favor{margin-top:10px;padding:8px 11px;border-radius:4px;
+  background:rgba(94,140,97,.10);border-left:3px solid #5E8C61;
+  font-size:11.5px;line-height:1.4;color:#4a6b4c}
+.leyenda-favor b{color:#3f6b42;font-family:var(--mono)}
 .leyenda-r li{display:flex;align-items:center;gap:9px;padding:6px 2px;
   border-bottom:1px solid var(--linea);font-size:13px}
 .leyenda-r li:last-child{border-bottom:0}
@@ -1081,13 +1093,38 @@ function trimestres(anio){
     x.retenido  += y.ret;
     if(!y.t.deduce) x.sinFactura += y.base;
   });
+  /* ── Camino A: liquidación como los modelos oficiales ──────────────────
+     IVA (Modelo 303): el resultado a favor de un trimestre NO se pierde,
+     se arrastra ("cuotas a compensar de periodos anteriores") y descuenta
+     lo que tocaría pagar en los trimestres siguientes, hasta agotarse.
+     IRPF (Modelo 130): es ACUMULADO del año, no trimestre suelto. Cada
+     trimestre es el 20 % del beneficio acumulado del año menos lo ya
+     pagado antes; un trimestre con pérdida lo netea contra los buenos.
+     Nota: se imputa por fecha de COBRO (criterio de caja). Si el gestor
+     liquida por fecha de factura (devengo), un cobro que se demora de un
+     trimestre a otro caería en distinto trimestre — confirmarlo con él. */
   t.forEach(x=>{
-    x.ivaPagar = x.ivaRep - x.ivaSop;               // modelo 303
-    x.beneficio = x.baseFact - x.baseGasto;         // beneficio declarable
-    x.irpf = Math.max(0, x.beneficio) * fiscal().irpf/100;
-    // Igual que en reparto(): en bruto y el IVA una sola vez.
+    x.ivaPagar  = x.ivaRep - x.ivaSop;              // resultado 303 (negativo = a favor)
+    x.beneficio = x.baseFact - x.baseGasto;         // rendimiento del trimestre
+  });
+  let credito=0, baseAcum=0, irpfAcum=0;
+  const tasaIrpf = fiscal().irpf/100;
+  t.forEach(x=>{
+    // IVA con compensación arrastrada
+    x.ivaCreditoIni = credito;                       // crédito a favor al empezar
+    x.ivaIngresar   = Math.max(0, x.ivaPagar - credito);
+    x.ivaCompensado = x.ivaPagar>0 ? Math.min(credito, x.ivaPagar) : 0;
+    credito = x.ivaPagar<0 ? credito + (-x.ivaPagar) : Math.max(0, credito - x.ivaPagar);
+    x.ivaCredito = credito;                          // crédito que queda para el siguiente
+    // IRPF acumulado (Modelo 130)
+    baseAcum += x.beneficio;
+    const cuota = Math.max(0, baseAcum) * tasaIrpf;
+    x.irpfPago = Math.max(0, cuota - irpfAcum);
+    irpfAcum  += x.irpfPago;
+    x.irpf     = x.irpfPago;                          // el "IRPF" del trimestre ya es el 130
+    // neto de caja del trimestre
     x.neto = x.baseFact + x.ivaRep + x.efectivo
-           - x.gastos - Math.max(0,x.ivaPagar) - x.irpf - x.retenido;
+           - x.gastos - x.ivaIngresar - x.irpfPago - x.retenido;
   });
   return t;
 }
@@ -1626,12 +1663,16 @@ function vistaDinero(){
   ].filter(p=>p.n!=='Retenciones' || p.v>0);
   const leyenda = r => {
     const tot = r.entra || 1;
+    const favor = r.ivaPagar < 0
+      ? `<div class="leyenda-favor">IVA a tu favor: <b>${eur(Math.abs(r.ivaPagar))} €</b>
+           · no sale de caja, se compensa (lo exacto, en Impuestos)</div>`
+      : '';
     return `<ul class="leyenda-r">` + partesDe(r).map(p=>`<li>
         <i style="background:${p.c}"></i>
         <span>${p.n}</span>
         <b${p.v<0?' class="neg"':''}>${eur(p.v)} €</b>
         <em>${Math.round(100*Math.max(0,p.v)/tot)} %</em>
-      </li>`).join('') + `</ul>`;
+      </li>`).join('') + `</ul>` + favor;
   };
 
   /* Rueda izquierda: el año entero o un trimestre suelto. Así se puede
@@ -1654,7 +1695,6 @@ function vistaDinero(){
         <span class="rb-nav"></span>
       </div>
       <div class="rbloque-sub">${eur(rAnio.entra)} € entraron</div>
-      <div class="rbloque-nota">&nbsp;</div>
       ${rueda(partesDe(rAnio), eur(rAnio.libre)+' €', 'queda limpio')}
       ${leyenda(rAnio)}
     </section>
@@ -2164,6 +2204,8 @@ function imprimirPresupuesto(p, comoPdf){
     <style>${css}
       body{background:#fff;padding:0;margin:0}
       .fac{margin:0 auto}
+      /* La impresora no rinde los grises claros: todo el texto en negro. */
+      .fac, .fac *{color:#000 !important}
       @page{size:A4;margin:14mm}
     </style></head><body>${htmlPresupuesto(p)}</body></html>`);
   w.document.close();
@@ -2559,6 +2601,10 @@ function imprimirFactura(f, comoPdf){
     <style>${css}
       body{background:#fff;padding:0;margin:0}
       .fac{margin:0 auto}
+      /* La impresora no rinde los grises claros y se pierden datos (NIF,
+         dirección, cabeceras, IBAN). En el documento impreso TODO el texto
+         va en negro sólido. */
+      .fac, .fac *{color:#000 !important}
       @page{size:A4;margin:14mm}
     </style></head><body>${htmlFactura(f)}</body></html>`);
   w.document.close();
@@ -2584,13 +2630,15 @@ function vistaImpuestos(){
 
   const anual=tri.reduce((a,x)=>({
     baseFact:a.baseFact+x.baseFact, efectivo:a.efectivo+x.efectivo,
-    baseGasto:a.baseGasto+x.baseGasto, ivaPagar:a.ivaPagar+Math.max(0,x.ivaPagar),
-    irpf:a.irpf+x.irpf, neto:a.neto+x.neto}),
-    {baseFact:0,efectivo:0,baseGasto:0,ivaPagar:0,irpf:0,neto:0});
+    baseGasto:a.baseGasto+x.baseGasto,
+    ivaIngresar:a.ivaIngresar+x.ivaIngresar,   // IVA que se paga tras compensar
+    irpf:a.irpf+x.irpfPago, retenido:a.retenido+x.retenido, neto:a.neto+x.neto}),
+    {baseFact:0,efectivo:0,baseGasto:0,ivaIngresar:0,irpf:0,retenido:0,neto:0});
 
-  const totalRet = tri.reduce((a,x)=>a+x.retenido,0);
-  const aHacienda = anual.ivaPagar + anual.irpf + totalRet;
+  const creditoFinal = tri[3].ivaCredito;        // IVA a favor que sobra a fin de año
+  const aHacienda = anual.ivaIngresar + anual.irpf + anual.retenido;
   const trimAhora = triActual ? tri[triActual-1] : null;
+  const pagoTrim  = trimAhora ? trimAhora.ivaIngresar + trimAhora.irpfPago + trimAhora.retenido : 0;
   const LIMITE=['20 de abril','20 de julio','20 de octubre','30 de enero'];
 
   let h=`<div class="selanio">
@@ -2600,19 +2648,31 @@ function vistaImpuestos(){
     </div>`;
 
   h+=`<div class="kpis">
-    <div class="kpi ${trimAhora && (Math.max(0,trimAhora.ivaPagar)+trimAhora.irpf+trimAhora.retenido)>0?'riesgo':'destaca'}">
+    <div class="kpi ${pagoTrim>0?'riesgo':'destaca'}">
       <span class="et">Este trimestre</span>
-      <div class="n">${trimAhora?eur(Math.max(0,trimAhora.ivaPagar)+trimAhora.irpf+trimAhora.retenido):0}<small>€</small></div>
-      <div class="sub">${triActual?`T${triActual} · antes del ${LIMITE[triActual-1]}`:'—'}</div></div>
+      <div class="n">${eur(pagoTrim)}<small>€</small></div>
+      <div class="sub">${triActual?`T${triActual} · antes del ${LIMITE[triActual-1]}`
+        :'—'}${trimAhora&&pagoTrim===0&&trimAhora.ivaCreditoIni>0?' · cubierto por tu saldo a favor':''}</div></div>
     <div class="kpi"><span class="et">IVA del año</span>
-      <div class="n">${eur(anual.ivaPagar)}<small>€</small></div>
-      <div class="sub">lo cobrado menos lo soportado</div></div>
+      <div class="n">${eur(anual.ivaIngresar)}<small>€</small></div>
+      <div class="sub">a ingresar, ya descontado lo compensado</div></div>
     <div class="kpi"><span class="et">IRPF del año</span>
       <div class="n">${eur(anual.irpf)}<small>€</small></div>
-      <div class="sub">${fiscal().irpf} % del beneficio</div></div>
+      <div class="sub">acumulado del año · Modelo 130</div></div>
     <div class="kpi"><span class="et">Total a Hacienda</span>
       <div class="n">${eur(aHacienda)}<small>€</small></div>
       <div class="sub">en ${anioSel}</div></div></div>`;
+
+  /* El saldo a favor, cuando lo hay, en UN solo sitio claro y en verde: no
+     repartido en la tabla. Es lo que Hacienda te debe / vas arrastrando. */
+  if(creditoFinal>0){
+    h+=`<div class="favor">
+      <span class="favor-et">A tu favor</span>
+      <b>${eur(creditoFinal)} €</b>
+      <span class="favor-txt">de IVA. Se descuenta solo de tu próximo pago;
+        si sigue a fin de año, lo pides a devolver en el último trimestre.</span>
+    </div>`;
+  }
 
   /* Agenda de pagos, no un resumen del negocio: eso ya lo cuentan las
      ruedas de Wallet. Aquí solo va qué se paga, cuánto y hasta cuándo. */
@@ -2628,15 +2688,23 @@ function vistaImpuestos(){
   </tr></thead><tbody>`;
 
   visibles.forEach(x=>{
-    const aPagar = Math.max(0,x.ivaPagar) + x.irpf + x.retenido;
+    const aPagar = x.ivaIngresar + x.irpfPago + x.retenido;
     const vacio = !(x.baseFact||x.efectivo||x.gastos);
+    /* Celda de IVA: si el trimestre da a favor, verde. Si se pagó pero se
+       usó crédito de antes, se anota en pequeño cuánto se compensó. */
+    let celdaIva;
+    if(x.ivaPagar < 0){
+      celdaIva = `<td class="num afavor">${eur(Math.abs(x.ivaPagar))} € a tu favor</td>`;
+    }else{
+      const nota = x.ivaCompensado>0 ? `<span class="sub-num">−${eur(x.ivaCompensado)} compensado</span>` : '';
+      celdaIva = `<td class="num ${x.ivaIngresar>0?'neg':''}">${eur(x.ivaIngresar)} €${nota}</td>`;
+    }
     h+=`<tr data-tri="${x.n}" style="cursor:pointer${vacio?';opacity:.5':''}">
       <td><b>T${x.n}</b> <span style="color:var(--dim);font-size:11.5px">${
         ['ene–mar','abr–jun','jul–sep','oct–dic'][x.n-1]}</span>
         ${x.n===triActual?' <span class="pill">en curso</span>':''}</td>
-      <td class="num ${x.ivaPagar>0?'neg':'pos'}">${
-        x.ivaPagar<0 ? `${eur(Math.abs(x.ivaPagar))} € a tu favor` : `${eur(x.ivaPagar)} €`}</td>
-      <td class="num ${x.irpf>0?'neg':''}">${eur(x.irpf)} €</td>
+      ${celdaIva}
+      <td class="num ${x.irpfPago>0?'neg':''}">${eur(x.irpfPago)} €</td>
       <td class="num ${x.retenido>0?'neg':''}">${eur(x.retenido)} €</td>
       <td class="num"><b>${eur(aPagar)} €</b></td>
       <td class="num" style="color:var(--dim)">${LIMITE[x.n-1]}</td></tr>`;
@@ -2648,19 +2716,22 @@ function vistaImpuestos(){
             <b>IVA</b>
             <div class="lin"><span>Cobrado en facturas</span><b>${eur(x.ivaRep)} €</b></div>
             <div class="lin"><span>Pagado en compras</span><b>−${eur(x.ivaSop)} €</b></div>
-            <div class="lin res"><span>${x.ivaPagar>=0?'A ingresar':'A tu favor'}</span>
-              <b>${eur(Math.abs(x.ivaPagar))} €</b></div>
-            <p>De cada factura que cobras, el ${fiscal().iva} % nunca fue tuyo.
-               Lo que pagas de IVA al comprar se resta.</p>
+            <div class="lin"><span>Resultado del trimestre</span>
+              <b>${x.ivaPagar<0?'−':''}${eur(Math.abs(x.ivaPagar))} €</b></div>
+            ${x.ivaCreditoIni>0?`<div class="lin"><span>A favor que traías</span><b>−${eur(x.ivaCreditoIni)} €</b></div>`:''}
+            <div class="lin res"><span>${x.ivaPagar<0||x.ivaIngresar===0&&x.ivaCredito>0?'Queda a tu favor':'A ingresar'}</span>
+              <b>${eur(x.ivaPagar<0||x.ivaIngresar===0?x.ivaCredito:x.ivaIngresar)} €</b></div>
+            <p>El IVA a favor de un trimestre no se pierde: se arrastra y
+               descuenta lo que pagarías el siguiente.</p>
           </div>
           <div class="det-b">
-            <b>IRPF</b>
-            <div class="lin"><span>Facturado</span><b>${eur(x.baseFact)} €</b></div>
+            <b>IRPF · Modelo 130</b>
+            <div class="lin"><span>Facturado (trimestre)</span><b>${eur(x.baseFact)} €</b></div>
             <div class="lin"><span>Gasto con factura</span><b>−${eur(x.baseGasto)} €</b></div>
-            <div class="lin"><span>Beneficio</span><b>${eur(x.beneficio)} €</b></div>
-            <div class="lin res"><span>${fiscal().irpf} % a cuenta</span><b>${eur(x.irpf)} €</b></div>
-            <p>Hacienda no espera a fin de año: cada trimestre se adelanta
-               una parte de lo ganado.</p>
+            <div class="lin"><span>Beneficio del trimestre</span><b>${x.beneficio<0?'−':''}${eur(Math.abs(x.beneficio))} €</b></div>
+            <div class="lin res"><span>Pago a cuenta (acumulado)</span><b>${eur(x.irpfPago)} €</b></div>
+            <p>El 130 va sobre el beneficio ACUMULADO del año menos lo ya
+               pagado: un trimestre en pérdida baja lo que pagas después.</p>
           </div>
           ${x.retenido>0?`<div class="det-b">
             <b>Retenciones</b>
