@@ -598,7 +598,10 @@ body.arrastrando-on .res{pointer-events:none}
 .tri-btn:hover{background:#fff;color:var(--tinta)}
 .tri-btn.on{background:var(--oro-suave);color:var(--oro);font-weight:600}
 .tri-btn:focus-visible{outline:2px solid var(--oro);outline-offset:-2px}
-.rueda{width:100%;max-width:210px;height:auto;margin:0;align-self:center}
+.rueda{width:100%;max-width:210px;height:auto;margin:0;align-self:center;
+  display:block;aspect-ratio:1/1}   /* aspect-ratio + width/height en el SVG:
+    en el Safari del iPad, sin esto la rueda se estiraba en alto y se salía
+    de su celda, pisando el título y la leyenda. En Chrome no pasaba. */
 .rueda circle{transition:opacity .16s}
 .rueda:hover circle{opacity:.55}
 .rueda circle:hover{opacity:1}
@@ -624,9 +627,13 @@ body.arrastrando-on .res{pointer-events:none}
 
 /* ── detalle de un trimestre ─────────────────────────────────────────── */
 .detalle td{padding:0!important;background:var(--panel)}
-.det{display:grid;gap:1px;background:var(--linea);border-top:1px solid var(--linea2)}
-@media(min-width:760px){.det{grid-template-columns:repeat(3,1fr)}}
-.det-b{background:#fff;padding:14px 16px}
+/* Flexbox en vez de grilla de 3 columnas fijas: los bloques se reparten y
+   estiran para llenar cada fila. Con la grilla fija, cuando había 4 bloques
+   (IVA, IRPF, Retenciones, Efectivo) la última fila dejaba dos CELDAS GRISES
+   VACÍAS que parecían "casillas viejas". Con flex no queda ningún hueco. */
+.det{display:flex;flex-wrap:wrap;gap:1px;background:var(--linea);
+  border-top:1px solid var(--linea2)}
+.det-b{flex:1 1 220px;min-width:0;background:#fff;padding:14px 16px}
 .det-b>b{display:block;font-family:var(--display);
   font-variation-settings:'wdth' 84,'wght' 700;font-size:12px;
   letter-spacing:.08em;text-transform:uppercase;margin-bottom:9px}
@@ -1069,7 +1076,7 @@ function rueda(partes, centroVal, centroEt){
     off += largo;
     return el;
   }).join('');
-  return `<svg viewBox="0 0 180 180" class="rueda" role="img" aria-label="${esc(centroEt)}">
+  return `<svg viewBox="0 0 180 180" width="180" height="180" preserveAspectRatio="xMidYMid meet" class="rueda" role="img" aria-label="${esc(centroEt)}">
       <circle cx="90" cy="90" r="${R}" fill="none" stroke="var(--linea)" stroke-width="${GROSOR}"/>
       ${arcos}
       <text x="90" y="86" class="r-val">${centroVal}</text>
@@ -1252,7 +1259,7 @@ function escuchar(alCargar){
         ? ({...d.data(), id:Number(d.id)})
         : ({id:d.id, ...d.data()}));
       if(col==='plazas') D.plazas.sort((a,b)=>a.id-b.id);
-      if(col==='servicios') D.servicios.sort(ordenServicios);
+      if(col==='servicios'){ limpiarServiciosDuplicados(); D.servicios.sort(ordenServicios); }
       if(col==='trabajos') sanearTrabajos();
       if(pendientes > 0){ pendientes--; if(pendientes === 0){ listo = true; alCargar(); } }
       else if(listo) pintar();
@@ -1262,6 +1269,30 @@ function escuchar(alCargar){
       if(pendientes > 0){ pendientes--; if(pendientes === 0){ listo = true; alCargar(); } }
     })
   );
+}
+
+/* Los servicios se referencian por NOMBRE (t.servicio === s.n), nunca por
+   id, así que si hay dos con el mismo nombre sobra uno. Una siembra doble
+   (dos dispositivos abriendo la base vacía a la vez, o ids provisionales
+   re-guardados) dejó pares repetidos. Esto los deja en uno solo: limpia la
+   memoria al momento y borra de Firestore los sobrantes. Corre en cada
+   carga, así que si vuelve a colarse un duplicado, se cura solo. */
+let limpiandoServ = false;
+function limpiarServiciosDuplicados(){
+  const primero = new Map();          // nombre → id que se conserva
+  const sobran = [];
+  (D.servicios||[]).forEach(s=>{
+    const nom = String(s.n);
+    if(primero.has(nom)) sobran.push(s.id);
+    else primero.set(nom, s.id);
+  });
+  if(!sobran.length) return;
+  const conservar = new Set(primero.values());
+  D.servicios = D.servicios.filter(s=>conservar.has(s.id));   // UI limpia ya
+  if(limpiandoServ) return;                                   // borrado en curso
+  limpiandoServ = true;
+  Promise.all(sobran.map(id=>borrarDoc('servicios', id).catch(()=>{})))
+    .finally(()=>{ limpiandoServ = false; });
 }
 
 /* Escritura. Se escribe el documento concreto que cambió, no todo el
@@ -4211,6 +4242,7 @@ function importar(file){
 }
 
 /* ─── pintar ───────────────────────────────────────────────────────── */
+let ultimaVista = null;
 function pintar(){
   /* Si hay un dedo arrastrando, repintar destruiría la barra a mitad de
      gesto (Firestore devuelve cada guardado como snapshot y disparaba
@@ -4221,6 +4253,12 @@ function pintar(){
   if(pie) pie.textContent = `En la base: ${D.trabajos.length} trabajos · `
     + `${D.cobros.length} cobros · ${D.gastos.length} gastos · ${D.clientes.length} clientes`;
   const c=$('#cuerpo');
+  /* Al CAMBIAR de pestaña se vacía y se fuerza un reflujo antes de pintar
+     lo nuevo. Sin esto, algunos navegadores (Safari sobre todo) dejaban
+     "fantasmas" de la vista anterior: bandas o casillas de otra pantalla
+     que seguían pintadas y se resaltaban al pasar el mouse. Los dos
+     innerHTML ocurren en el mismo frame, así que no hay parpadeo. */
+  if(ultimaVista !== vista){ c.innerHTML=''; void c.offsetHeight; ultimaVista = vista; }
   c.innerHTML = vista==='plazas'?vistaPlazas() : vista==='dinero'?vistaDinero()
     : vista==='clientes'?vistaClientes()
     : vista==='impuestos'?vistaImpuestos()
@@ -4410,7 +4448,16 @@ async function sembrarSiHaceFalta(){
   if(!t.empty || !sv.empty) return false;
   semilla();
   for(const col of COLECCIONES){
-    for(const obj of (D[col]||[])) await grabar(col, obj);
+    for(const obj of (D[col]||[])){
+      const nuevoId = await grabar(col, obj);
+      /* Clave: se guarda el id REAL que devolvió Firestore y se marca como
+         sincronizado. Sin esto, los servicios quedaban con id provisional
+         y el primer guardar() los volvía a añadir como documentos nuevos:
+         de ahí salían los duplicados. */
+      if(nuevoId && nuevoId !== obj.id) obj.id = nuevoId;
+      const {id, ...limpio} = obj;
+      sincronizado.set(huella(col, obj.id), JSON.stringify(limpio));
+    }
   }
   return true;
 }
@@ -4431,7 +4478,9 @@ auth.onAuthStateChanged(async user=>{
       }catch(e){}
   escuchar(()=>{
     if(!D.plazas || !D.plazas.length)       D.plazas    = PLAZAS_INI.map(p=>({...p}));
-    if(!D.servicios || !D.servicios.length) D.servicios = SERVICIOS_INI.map(x=>({...x,id:nid()})).sort(ordenServicios);
+    /* Los servicios NO se reinyectan aquí: se siembran una sola vez en
+       Firestore (sembrarSiHaceFalta). Reinyectarlos con ids provisionales
+       hacía que guardar() los añadiera de nuevo → duplicados. */
     if(!D.clientes) D.clientes=[];
     if(!D.facturas) D.facturas=[];
     if(!D.presupuestos) D.presupuestos=[];
