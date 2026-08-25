@@ -4398,10 +4398,30 @@ $('#importar').addEventListener('change',e=>{
   e.target.value='';            // así se puede reintentar con el mismo archivo
   if(f) importar(f);
 });
-$('#hoja').addEventListener('click',e=>{
-  if(e.target.id==='hoja'||e.target.hasAttribute('data-cerrar')) cerrar();
+/* Protección contra misclicks. Tocar el fondo del panel ya NO cierra el
+   formulario: ese era el que borraba un presupuesto entero por un toque
+   afuera de la grilla. Solo cierran el botón Cancelar/Cerrar y la tecla
+   Escape, y si escribiste algo, preguntan antes de descartar.
+
+   "¿Hay cambios sin guardar?" se detecta por los eventos de escritura, y se
+   resetea al abrir/cerrar el panel (cambio de clase de #hoja). NO se engancha
+   al contenido de #hojaC porque presupuestos y facturas re-dibujan sus líneas
+   al vuelo, y eso reiniciaría el aviso sin querer. */
+let hojaSucia = false;
+new MutationObserver(()=>{ hojaSucia = false; })
+  .observe($('#hoja'), {attributes:true, attributeFilter:['class']});
+$('#hojaC').addEventListener('input',  ()=>{ hojaSucia = true; });
+$('#hojaC').addEventListener('change', ()=>{ hojaSucia = true; });
+function intentarCerrar(){
+  if(hojaSucia && !confirm('Tenés cambios sin guardar.\n¿Los descartás?')) return;
+  cerrar();
+}
+$('#hoja').addEventListener('click', e=>{
+  if(e.target.hasAttribute('data-cerrar')) intentarCerrar();   // el fondo ya no cierra
 });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') cerrar(); });
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && $('#hoja').classList.contains('on')) intentarCerrar();
+});
 
 /* ─── acceso y arranque ────────────────────────────────────────────── */
 const $acc = document.getElementById('acceso');
