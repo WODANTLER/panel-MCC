@@ -3196,7 +3196,7 @@ function abrirTrabajo(id, previo){
   const t = editT || {coche:'',cliente:'',servicio:(servicios()[0]||{n:'Otro'}).n,
     plaza:previo?previo.plaza:1,
     estado: (previo?previo.entra:aIso(hoy)) <= aIso(hoy) ? 'curso' : 'reservado',
-    entra:previo?previo.entra:aIso(hoy), dias:1, presupuesto:0};
+    entra:previo?previo.entra:aIso(hoy), hora:'09:00', dias:1, presupuesto:0};
 
   let cobrosHtml='';
   if(editT){
@@ -3246,9 +3246,11 @@ function abrirTrabajo(id, previo){
       <div class="campo"><label for="t-estado">Estado</label>
         <select id="t-estado">${Object.entries(ESTADOS)
           .map(([k,v])=>`<option value="${k}"${k===t.estado?' selected':''}>${v}</option>`).join('')}</select></div></div>
-    <div class="fila2">
+    <div class="fila3">
       <div class="campo"><label for="t-entra">Entra</label>
         <input type="date" id="t-entra" value="${t.entra}"></div>
+      <div class="campo"><label for="t-hora">Hora de entrada</label>
+        <input type="time" id="t-hora" value="${t.hora||'09:00'}"></div>
       <div class="campo"><label for="t-dias">Días que se queda</label>
         <input type="number" id="t-dias" min="1" max="60" value="${t.dias}" inputmode="numeric"></div></div>
     <div class="campo"><label for="t-pres">Presupuesto sin IVA (€)</label>
@@ -3383,6 +3385,7 @@ function guardarTrabajo(){
     plaza:+$('#t-plaza').value,
     estado:$('#t-estado').value,
     entra:$('#t-entra').value||aIso(hoy),
+    hora:$('#t-hora').value||'09:00',   // para el aviso 24h/1h del calendario
     dias:Math.max(1,+$('#t-dias').value||1),
     presupuesto:numero($('#t-pres').value),
     materiales:mats
