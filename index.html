@@ -186,6 +186,9 @@ h1,h2,h3{margin:0;font-family:var(--display);font-variation-settings:'wdth' 84,'
     transform:translateY(-50%);background:transparent;z-index:16}
   .res.sel.ancha .tira.izq{left:-24px}
   .res.sel.ancha .tira.der{right:-24px}
+  /* lado que continúa en otra semana: bolita por dentro del borde visible */
+  .res.sel.ancha.viene .tira.izq{left:-6px}
+  .res.sel.ancha.sigue .tira.der{right:-6px}
   .res.sel.ancha .tira::after{content:"";position:absolute;left:50%;top:50%;
     transform:translate(-50%,-50%);opacity:1;
     width:22px;height:22px;border-radius:50%;background:#fff;
@@ -250,6 +253,15 @@ body.arrastrando-on .res{pointer-events:none}
 .tira{position:absolute;top:0;bottom:0;width:14px;cursor:ew-resize;z-index:2;
   touch-action:none}    /* estirar nunca desplaza la página */
 .tira.izq{left:-2px} .tira.der{right:-2px}
+/* Si la barra continúa en otra semana, el borde de ese lado está fuera de
+   pantalla. El tirador de ese lado se mete DENTRO del borde visible para
+   que se pueda agarrar igual (si colgara fuera, la pista lo recorta). Así
+   se puede estirar/acortar por los dos lados aunque la reserva cruce
+   semanas. */
+.res.viene .tira.izq{left:0}
+.res.sigue .tira.der{right:0}
+.res.sel.viene .tira.izq{left:0}
+.res.sel.sigue .tira.der{right:0}
 .tira::after{content:"";position:absolute;top:50%;transform:translateY(-50%);
   left:5px;width:3px;height:16px;border-radius:2px;
   background:currentColor;opacity:0;transition:opacity .16s}
@@ -1584,8 +1596,8 @@ function vistaPlazas(){
         h+=`<button class="res ${t.estado}${viene?' viene':''}${sigue?' sigue':''}${n>=2?' ancha':''}${t.avisarCliente?' avisar':''}${p.libre?' enreserva':''}" data-t="${t.id}"
               style="left:${(d0/7*100).toFixed(4)}%;width:${(n/7*100).toFixed(4)}%"
               title="${esc(t.coche)} · ${esc(t.servicio)} · ${fCorta(e)} a ${fCorta(sa)}">
-              ${viene?'':'<span class="tira izq" data-tira="izq"></span>'}
-              ${sigue?'':'<span class="tira der" data-tira="der"></span>'}
+              <span class="tira izq" data-tira="izq"></span>
+              <span class="tira der" data-tira="der"></span>
               <b>${esc(t.coche)}</b>`
           /* Si la barra se ve recortada porque el trabajo sigue en otra
              semana, se declara la duración real ahí mismo: una barra de
