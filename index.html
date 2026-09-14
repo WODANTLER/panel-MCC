@@ -2265,24 +2265,42 @@ function presupuestoAFactura(id){
   });
 }
 
-function imprimirPresupuesto(p, comoPdf){
+/* Imprime o genera el PDF SIN abrir una ventana nueva. Antes se usaba
+   window.open, y en el iPad eso dejaba el documento a pantalla completa sin
+   forma clara de volver: había que forzar el cierre de la app. Con un iframe
+   oculto, la hoja de impresión / "Guardar como PDF" de iOS aparece SOBRE la
+   app y, al cerrarla, seguís dentro del panel. Además ya no hay bloqueo de
+   ventanas emergentes. */
+const FUENTES_DOC = '<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">';
+function imprimirDoc(titulo, cuerpoHTML){
   const css = [...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
-  const w = window.open('', '_blank');
-  if(!w){ alert('El navegador ha bloqueado la ventana. Permite las ventanas emergentes para poder imprimir.'); return; }
-  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-    <title>Presupuesto ${esc(p.numero)} · ${esc(p.cliente||'')}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  const doc = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${esc(titulo)}</title>${FUENTES_DOC}
     <style>${css}
       body{background:#fff;padding:0;margin:0}
       .fac{margin:0 auto}
       /* La impresora no rinde los grises claros: todo el texto en negro. */
       .fac, .fac *{color:#000 !important}
       @page{size:A4;margin:14mm}
-    </style></head><body>${htmlPresupuesto(p)}</body></html>`);
-  w.document.close();
-  const lanzar = () => { w.focus(); w.print(); };
-  if(w.document.fonts && w.document.fonts.ready) w.document.fonts.ready.then(()=>setTimeout(lanzar,120));
-  else setTimeout(lanzar, 600);
+    </style></head><body>${cuerpoHTML}</body></html>`;
+  const ifr = document.createElement('iframe');
+  ifr.setAttribute('aria-hidden','true');
+  ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none';
+  ifr.onload = () => {
+    const win = ifr.contentWindow;
+    const d = win.document;
+    const lanzar = () => { try{ win.focus(); win.print(); }catch(e){} };
+    if(d.fonts && d.fonts.ready) d.fonts.ready.then(()=>setTimeout(lanzar,150));
+    else setTimeout(lanzar, 500);
+    const limpiar = () => { if(ifr.parentNode) ifr.remove(); };
+    try{ win.addEventListener('afterprint', ()=>setTimeout(limpiar,400)); }catch(e){}
+    setTimeout(limpiar, 60000);   // red de seguridad
+  };
+  ifr.srcdoc = doc;
+  document.body.appendChild(ifr);
+}
+
+function imprimirPresupuesto(p, comoPdf){
+  imprimirDoc(`Presupuesto ${p.numero} · ${p.cliente||''}`, htmlPresupuesto(p));
 }
 
 /* El mismo marcado sirve para la vista previa, para imprimir y para el
@@ -2662,27 +2680,7 @@ function cerrarFac(){ $('#hojaC').classList.remove('ancho'); cerrar(); }
    sistema. Desde ahí se imprime o se elige "Guardar como PDF", que es
    como se genera el PDF sin depender de ninguna librería externa. */
 function imprimirFactura(f, comoPdf){
-  const css = [...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
-  const w = window.open('', '_blank');
-  if(!w){ alert('El navegador ha bloqueado la ventana. Permite las ventanas emergentes para poder imprimir.'); return; }
-  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-    <title>Factura ${esc(f.numero)} · ${esc(f.cliente||'')}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>${css}
-      body{background:#fff;padding:0;margin:0}
-      .fac{margin:0 auto}
-      /* La impresora no rinde los grises claros y se pierden datos (NIF,
-         dirección, cabeceras, IBAN). En el documento impreso TODO el texto
-         va en negro sólido. */
-      .fac, .fac *{color:#000 !important}
-      @page{size:A4;margin:14mm}
-    </style></head><body>${htmlFactura(f)}</body></html>`);
-  w.document.close();
-  // Se espera a que carguen las fuentes: si no, imprime con la tipografía
-  // del sistema y el resultado no se parece a la vista previa.
-  const lanzar = () => { w.focus(); w.print(); };
-  if(w.document.fonts && w.document.fonts.ready) w.document.fonts.ready.then(()=>setTimeout(lanzar,120));
-  else setTimeout(lanzar, 600);
+  imprimirDoc(`Factura ${f.numero} · ${f.cliente||''}`, htmlFactura(f));
 }
 
 /* ─── impuestos ────────────────────────────────────────────────────────
@@ -4433,8 +4431,17 @@ $('#importar').addEventListener('change',e=>{
    al contenido de #hojaC porque presupuestos y facturas re-dibujan sus líneas
    al vuelo, y eso reiniciaría el aviso sin querer. */
 let hojaSucia = false;
+/* "Hay cambios sin guardar" se resetea cuando se carga una PANTALLA nueva
+   dentro del panel (se reemplaza el contenido de #hojaC). Antes se ataba al
+   cambio de clase de #hoja, pero al pasar del formulario de factura a la
+   VISTA de la factura guardada #hoja ya estaba abierto y no cambiaba de
+   clase: quedaba marcado como "sucio" y al tocar Cerrar salía un "¿descartás
+   cambios?" que, si el navegador tenía los diálogos bloqueados, dejaba el
+   botón sin efecto y había que reiniciar. Observando el contenido de #hojaC
+   (solo hijos directos, no el subárbol) se resetea en cada pantalla nueva,
+   pero NO cuando el formulario redibuja sus líneas (eso pasa en un subárbol). */
 new MutationObserver(()=>{ hojaSucia = false; })
-  .observe($('#hoja'), {attributes:true, attributeFilter:['class']});
+  .observe($('#hojaC'), {childList:true});
 $('#hojaC').addEventListener('input',  ()=>{ hojaSucia = true; });
 $('#hojaC').addEventListener('change', ()=>{ hojaSucia = true; });
 function intentarCerrar(){
