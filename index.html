@@ -861,6 +861,129 @@ body.arrastrando-on .res{pointer-events:none}
 .arch{position:relative;overflow:hidden;display:inline-block}
 .arch input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 
+/* ══════════════════════════════════════════════════════════════════════
+   MÓVIL · todo lo de aquí abajo vive dentro de la media query, así que en
+   escritorio y en tablet no existe. En el teléfono la rejilla semanal no
+   cabe: 7 columnas en 390 px dan celdas de 45 px, ilegibles e imposibles
+   de tocar. Se gira el planteamiento: se elige UN día en el carril de
+   arriba y debajo salen las plazas en vertical, a lo ancho de la pantalla.
+   La rejilla sigue siendo la misma por dentro (.rej-pista / .rej-cel), así
+   que arrastrar, detectar choques y pintar el destino funcionan sin tocar
+   una línea de esa lógica.
+   ══════════════════════════════════════════════════════════════════════ */
+@media(max-width:560px){
+  body{padding-bottom:calc(58px + env(safe-area-inset-bottom,0px))}
+
+  /* Cabecera en dos líneas: el nombre arriba y los botones repartidos
+     debajo. En una sola fila no caben y se salían de la pantalla. */
+  .top{backdrop-filter:none;background:#fff}   /* ver nota de .tabs */
+  .top-in{gap:7px;flex-wrap:wrap;padding:10px 0}
+  .marca{width:100%;margin-right:0}
+  .marca svg{width:26px;height:26px}
+  .marca b{font-size:13px}
+  .marca span{font-size:9.5px}
+  .top-in .btn,.top-in .arch{flex:1 1 auto;justify-content:center;
+    font-size:11.5px;padding:9px 8px;white-space:nowrap}
+
+  /* Las pestañas bajan al pulgar. Son ocho: se desplazan en horizontal
+     en vez de apretujarse o esconderse en un menú. */
+  /* Las pestañas bajan al pulgar. Ojo: .top llevaba backdrop-filter, y un
+     ancestro con filtro hace que position:fixed se ancle a ÉL en vez de a
+     la ventana — por eso arriba se le quita el filtro en móvil. Son ocho
+     pestañas: se desplazan en horizontal en lugar de esconderse en un menú. */
+  .top .tabs{position:fixed;left:0;right:0;bottom:0;z-index:60;margin:0;
+    background:#fff;border-top:1px solid var(--linea);border-bottom:0;
+    padding:0 8px env(safe-area-inset-bottom,0px);gap:2px;
+    overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+    box-shadow:0 -2px 12px rgba(20,20,26,.07)}
+  .top .tabs::-webkit-scrollbar{display:none}
+  .top .tabs .tab{flex:none;padding:18px 12px;font-size:11px;min-height:56px;
+    border-bottom:0}
+  /* En una barra de abajo la marca va arriba del texto, no debajo. */
+  .top .tabs .tab[aria-selected="true"]{box-shadow:inset 0 2px 0 var(--oro)}
+
+  /* ── agenda ── */
+  .mov-mes{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+  .mov-mes b{font-family:var(--display);font-variation-settings:'wdth' 82,'wght' 700;
+    font-size:14px;letter-spacing:.05em;text-transform:uppercase;
+    margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mov-mes .fl{appearance:none;background:#fff;border:1px solid var(--linea2);
+    width:38px;height:38px;flex:none;cursor:pointer;font-size:17px;color:var(--tinta);
+    display:flex;align-items:center;justify-content:center;line-height:1}
+  .mov-mes .fl:active{background:var(--oro-suave);border-color:var(--oro)}
+
+  /* carril de días del mes */
+  .mov-dias{display:flex;gap:6px;overflow-x:auto;padding:0 0 14px;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;
+    scroll-snap-type:x proximity}
+  .mov-dias::-webkit-scrollbar{display:none}
+  .mov-dia{flex:none;scroll-snap-align:center;width:48px;appearance:none;
+    background:#fff;border:1px solid var(--linea2);cursor:pointer;
+    padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .mov-dia i{font-style:normal;font-family:var(--mono);font-size:8.5px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+  .mov-dia b{font-family:var(--display);
+    font-variation-settings:'wdth' 78,'wght' 700;font-size:17px;line-height:1}
+  /* un punto por coche dentro: el día se lee lleno o vacío sin abrirlo */
+  .mov-dia u{display:flex;gap:2px;height:4px;align-items:center;text-decoration:none}
+  .mov-dia u s{width:3px;height:3px;background:var(--oro-claro);border-radius:50%;
+    text-decoration:none;display:block}
+  .mov-dia.finde{background:var(--panel2)}
+  .mov-dia.hoy{border-color:var(--oro)} .mov-dia.hoy i{color:var(--oro)}
+  .mov-dia[aria-pressed="true"]{background:var(--tinta);border-color:var(--tinta)}
+  .mov-dia[aria-pressed="true"] i{color:rgba(255,255,255,.62)}
+  .mov-dia[aria-pressed="true"] b{color:#fff}
+
+  .mov-tit{display:flex;align-items:baseline;gap:9px;margin:0 0 11px;
+    font-family:var(--display);font-variation-settings:'wdth' 82,'wght' 700;
+    font-size:13px;letter-spacing:.09em;text-transform:uppercase}
+  .mov-tit span{margin-left:auto;font-family:var(--mono);font-size:10px;
+    letter-spacing:.09em;color:var(--dim)}
+
+  /* una plaza = una tarjeta a lo ancho */
+  .mov-pz{border:1px solid var(--linea2);background:#fff;margin:0 0 8px}
+  .mov-pz.vacia{background:var(--panel);border-style:dashed}
+  .mov-pz-et{display:flex;align-items:center;gap:8px;padding:9px 13px;
+    background:var(--panel2);border-bottom:1px solid var(--linea)}
+  .mov-pz.vacia .mov-pz-et{background:transparent;border-bottom-color:transparent}
+  .mov-pz-et b{font-family:var(--display);
+    font-variation-settings:'wdth' 80,'wght' 700;font-size:11.5px;
+    letter-spacing:.09em;text-transform:uppercase}
+  .mov-pz-et i{font-style:normal;font-family:var(--mono);font-size:8.5px;
+    letter-spacing:.07em;color:var(--dim);text-transform:uppercase;
+    margin-left:auto;white-space:nowrap}
+  .mov-vacio{padding:15px 13px;color:var(--dim);font-family:var(--mono);
+    font-size:10.5px;letter-spacing:.09em;text-transform:uppercase}
+
+  /* La pista de un solo día. Mismo elemento que en la rejilla semanal,
+     con otra altura: por eso el arrastre no necesita saber nada nuevo. */
+  .mov-pz .rej-pista{height:auto;min-height:94px;position:relative}
+  .mov-pz .rej-cel{position:absolute;inset:0;width:auto;border:0}
+  .mov-pz .res{position:absolute;inset:6px;border-radius:0;
+    display:block;padding:11px 12px;text-align:left;overflow:hidden;
+    touch-action:pan-y}                 /* hasta que se arma, la página manda */
+  .mov-pz .res.armado{touch-action:none;box-shadow:inset 0 0 0 2px var(--oro)}
+  .mov-pz .res .tira{display:none}      /* estirar, desde la ficha */
+  .mov-pz .res b{display:block;font-family:var(--display);
+    font-variation-settings:'wdth' 82,'wght' 700;font-size:15.5px;
+    line-height:1.2;white-space:normal;letter-spacing:.01em}
+  .mov-pz .res i{display:block;font-style:normal;font-size:12px;
+    opacity:.82;margin-top:4px;font-family:var(--sans)}
+  .mov-pz .res .mov-pie{display:flex;align-items:center;gap:6px;margin-top:9px;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;
+    text-transform:uppercase;opacity:.9}
+  .mov-pz .res .mov-eu{margin-left:auto;font-weight:600;font-size:11px;
+    letter-spacing:.02em;text-transform:none}
+  .mov-pz .res .mov-bar{margin-top:9px;height:4px;background:rgba(0,0,0,.12);
+    display:flex;overflow:hidden}
+  .mov-pz .res .mov-bar s{display:block;background:currentColor;opacity:.55;
+    text-decoration:none}
+
+  .mov-ayuda{border-left:3px solid var(--oro);background:var(--panel2);
+    padding:11px 13px;margin:14px 0 0;font-size:12px;line-height:1.45;color:var(--dim)}
+  .mov-ayuda b{color:var(--tinta);font-weight:600}
+}
+
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -1503,7 +1626,105 @@ function pintarAvisoMemoria(){
 }
 
 /* ─── plazas ───────────────────────────────────────────────────────── */
+/* Debajo de este ancho se pinta la agenda de un día en vez de la rejilla
+   semanal. Es el mismo corte que usa el CSS de arriba. */
+const ANCHO_MOVIL = '(max-width:560px)';
+const movil = () => window.matchMedia && window.matchMedia(ANCHO_MOVIL).matches;
+let diaMovil = aIso(hoy);              // día abierto en la agenda del móvil
+
+/* ── agenda del móvil ──────────────────────────────────────────────────
+   Un día, seis plazas en vertical. Por dentro cada plaza es una
+   .rej-pista con UNA sola .rej-cel, así que celdaBajo(), pintarDrop() y
+   pisaA() siguen funcionando igual: al soltar un coche sobre otra plaza,
+   el día que se conserva sale de la misma cuenta de siempre. */
+function vistaPlazasMovil(){
+  const sel = aFecha(diaMovil);
+  const anio = mesRef.getFullYear(), mes = mesRef.getMonth();
+  const ultimo = new Date(anio, mes+1, 0).getDate();
+  const DIAS = ['L','M','X','J','V','S','D'];
+
+  const dentroHoy = D.trabajos.filter(t=>aFecha(t.entra)<=hoy && salida(t)>=hoy);
+  const ocupadasHoy = new Set(dentroHoy.filter(t=>!esLibre(t.plaza)).map(t=>t.plaza)).size;
+  const sinRec = D.trabajos.filter(t=>t.estado==='sinrecoger').length;
+
+  const cuantos = f => plazas().filter(p=>!p.libre &&
+    D.trabajos.some(t=>t.plaza===p.id && aFecha(t.entra)<=f && salida(t)>=f)).length;
+
+  let h = `<div class="kpis">
+    <div class="kpi destaca"><span class="et">Coches dentro hoy</span>
+      <div class="n">${dentroHoy.length}</div>
+      <div class="sub">${ocupadasHoy} de ${reservables().length} plazas</div></div>
+    <div class="kpi ${sinRec?'riesgo':''}"><span class="et">Sin recoger</span>
+      <div class="n">${sinRec}</div>
+      <div class="sub">terminados, ocupando plaza</div></div></div>`;
+
+  const ch = choques();
+  if(ch.length) h += `<div class="choque"><b>Hay ${ch.length} choque${ch.length>1?'s':''} de plaza.</b> `
+    + ch.map(([a,b])=>`${esc(a.coche)} y ${esc(b.coche)} en la plaza ${a.plaza}.`).join(' ')
+    + ` Cambia uno de plaza o de fecha.</div>`;
+
+  /* Mes y flechas: sin esto no se puede llegar a enero desde el teléfono. */
+  h += `<div class="mov-mes">
+    <button class="fl" type="button" data-mesm="-1" aria-label="Mes anterior">‹</button>
+    <b>${esc(mesRef.toLocaleDateString('es-ES',{month:'long',year:'numeric'}))}</b>
+    <button class="fl" type="button" data-mesm="1" aria-label="Mes siguiente">›</button>
+    <button class="btn mini" type="button" data-mesm="hoy">Hoy</button>
+  </div><div class="mov-dias" id="movDias">`;
+
+  for(let i=1;i<=ultimo;i++){
+    const d = new Date(anio, mes, i), iso = aIso(d);
+    const n = cuantos(d), fin = d.getDay()===0||d.getDay()===6;
+    h += `<button class="mov-dia${fin?' finde':''}${d.getTime()===hoy.getTime()?' hoy':''}"
+      type="button" data-diam="${iso}" aria-pressed="${iso===diaMovil}">
+      <i>${d.getTime()===hoy.getTime()?'HOY':DIAS[(d.getDay()+6)%7]}</i>
+      <b>${i}</b><u>${'<s></s>'.repeat(n)}</u></button>`;
+  }
+  h += `</div>`;
+
+  const dif = diasEntre(hoy, sel);
+  const titulo = dif===0?'Hoy' : dif===1?'Mañana' : dif===-1?'Ayer'
+    : sel.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  h += `<h2 class="mov-tit">${esc(titulo)}<span>${esc(fCorta(sel))} · ${cuantos(sel)}/${reservables().length}</span></h2>`;
+
+  plazas().forEach(p=>{
+    const dentro = D.trabajos.filter(t=>t.plaza===p.id
+      && aFecha(t.entra)<=sel && salida(t)>=sel);
+    h += `<div class="mov-pz${dentro.length?'':' vacia'}">
+      <div class="mov-pz-et"><b>${esc(p.nom)}</b><i>${esc(p.uso)}</i></div>
+      <div class="rej-pista" data-plaza="${p.id}" data-lunes="${diaMovil}">
+        <div class="rej-cel" data-f="${diaMovil}"></div>`;
+    if(!dentro.length){
+      h += `<div class="mov-vacio">${p.libre?'Libre para imprevistos':'Libre'}</div>`;
+    }
+    dentro.forEach(t=>{
+      const ent = aFecha(t.entra), sa = salida(t);
+      const total = Math.max(1, t.dias);
+      const hechos = Math.min(total, Math.max(1, diasEntre(ent, sel)+1));
+      const co = D.cobros.filter(c=>c.trabajoId===t.id).reduce((a,c)=>a+(c.importe||0),0);
+      const pend = Math.max(0, (t.presupuesto||0) - co);
+      h += `<button class="res ${t.estado}${t.avisarCliente?' avisar':''}${p.libre?' enreserva':''}" data-t="${t.id}">
+        <span class="tira izq" data-tira="izq"></span>
+        <span class="tira der" data-tira="der"></span>
+        <b>${esc(t.coche)}</b>
+        <i>${esc(t.servicio)}${t.cliente?' · '+esc(t.cliente):''}</i>
+        <span class="mov-bar"><s style="width:${(hechos/total*100).toFixed(1)}%"></s></span>
+        <span class="mov-pie">
+          <span>día ${hechos} de ${total}</span>
+          <span>· sale ${esc(fCorta(sa))}</span>
+          <span class="mov-eu">${pend>0?'debe '+eur(pend)+' €':eur(co)+' € ✓'}</span>
+        </span></button>`;
+    });
+    h += `</div></div>`;
+  });
+
+  h += `<div class="mov-ayuda"><b>Mantén un coche medio segundo</b> y arrástralo
+    a otra plaza. Un toque abre su ficha, donde se cambian el día, los días
+    de estancia y los cobros.</div>`;
+  return h;
+}
+
 function vistaPlazas(){
+  if(movil()) return vistaPlazasMovil();
   const anio=mesRef.getFullYear(), mes=mesRef.getMonth();
   const primero=new Date(anio,mes,1), ultimo=new Date(anio,mes+1,0);
   const ini=lunes(primero);                       // la rejilla siempre abre en lunes
@@ -3595,7 +3816,10 @@ function cerrarArrastre(){
 }
 
 function montarArrastre(el){
-  el.addEventListener('pointerdown', ev=>{
+  /* El cuerpo del pointerdown se saca aparte para poder lanzarlo también
+     desde el temporizador de la pulsación larga del móvil. En escritorio y
+     tablet se llama igual que siempre, en el mismo instante. */
+  const iniciar = ev => {
     if(ev.target && ev.target.closest && ev.target.closest('.mini-dias')) return;
     if(ev.button !== undefined && ev.button !== 0) return;
     if(ev.isPrimary === false) return;             // segundo dedo: se ignora
@@ -3631,6 +3855,50 @@ function montarArrastre(el){
     arr.dPlaza = t.plaza;  arr.dEntra = t.entra;
     /* No hace falta setPointerCapture: el documento recibe los eventos igual
        y la captura en iPad es justamente lo que fallaba. */
+  };
+
+  el.addEventListener('pointerdown', ev=>{
+    /* En el teléfono el dedo también sirve para recorrer la pantalla, así
+       que el arrastre no puede ser nuestro desde el primer píxel: se arma
+       con medio segundo de pulsación, con un golpecito de vibración para
+       avisar. Si el dedo se mueve antes, era un scroll y no pasa nada.
+       En escritorio y tablet movil() es false y esto no se ejecuta. */
+    if(movil() && ev.pointerType === 'touch'){
+      if(gestoEnCurso) return;
+      const x0 = ev.clientX, y0 = ev.clientY, pid = ev.pointerId;
+      const copia = {clientX:x0, clientY:y0, pointerId:pid, pointerType:'touch',
+                     isPrimary:true, button:0, target:ev.target};
+      let tim = 0, movido = false;
+      const limpiar = () => {
+        clearTimeout(tim);
+        document.removeEventListener('pointermove', vigila);
+        document.removeEventListener('pointerup', alSoltar);
+        document.removeEventListener('pointercancel', limpiar);
+      };
+      const vigila = e2 => {
+        if(e2.pointerId !== pid) return;
+        if(Math.abs(e2.clientX-x0) > 9 || Math.abs(e2.clientY-y0) > 9){ movido = true; limpiar(); }
+      };
+      /* Si se suelta antes de que arme y sin moverse, fue un toque corto:
+         abre la ficha. Sin esto el temporizador se comía el toque y tocar
+         un coche no hacía absolutamente nada. */
+      const alSoltar = e2 => {
+        if(e2.pointerId !== pid) return;
+        limpiar();
+        if(!movido) abrirAcciones(el.dataset.t);
+      };
+      tim = setTimeout(()=>{
+        limpiar();
+        el.classList.add('armado');
+        if(navigator.vibrate) try{ navigator.vibrate(14) }catch(e){}
+        iniciar(copia);
+      }, 450);
+      document.addEventListener('pointermove', vigila);
+      document.addEventListener('pointerup', alSoltar);
+      document.addEventListener('pointercancel', limpiar);
+      return;
+    }
+    iniciar(ev);
   });
 
   el.addEventListener('selectstart', ev=>ev.preventDefault());
@@ -3642,6 +3910,10 @@ function montarArrastre(el){
     abrirAcciones(el.dataset.t);
   });
 }
+
+document.addEventListener('touchmove', ev=>{
+  if(arr.el && arr.el.classList.contains('armado')) ev.preventDefault();
+}, {passive:false});
 
 /* ── movimiento del arrastre, a nivel de documento ────────────────────── */
 document.addEventListener('pointermove', ev=>{
@@ -3697,6 +3969,7 @@ document.addEventListener('pointermove', ev=>{
 document.addEventListener('pointerup', ev=>{
   const el = arr.el;
   if(!el || ev.pointerId !== arr.pid) return;
+  el.classList.remove('armado');
   const t = arr.t, moviendo = arr.moviendo, modo = arr.modo;
   const diasPrev = arr.diasPrev, entraPrev = arr.entraPrev;
   const dPlaza = arr.dPlaza, dEntra = arr.dEntra;
@@ -3707,6 +3980,11 @@ document.addEventListener('pointerup', ev=>{
     /* Fue un toque: seleccionar / doble-toque abre ficha. */
     if(ev.target && ev.target.closest && ev.target.closest('.mini-dias')){ flushRepinta(); return; }
     const id = el.dataset.t, ahora = Date.now(), prev = ultimoToque.get(el) || 0;
+    /* En el teléfono los tiradores de estirar están ocultos, así que
+       "seleccionar" no enseña nada: el primer toque se quedaba en nada y
+       había que tocar dos veces para abrir. Aquí un toque abre la ficha.
+       En tablet y escritorio sigue el doble toque de siempre. */
+    if(movil()){ seleccionarRes(null); abrirAcciones(id); flushRepinta(); return; }
     if(ahora - prev < 320){ ultimoToque.set(el, 0); seleccionarRes(null); abrirAcciones(id); }
     else { ultimoToque.set(el, ahora); seleccionarRes(resSel === id ? null : id); }
     flushRepinta(); return;
@@ -4299,6 +4577,37 @@ function pintar(){
     pintar();
   }));
   c.querySelectorAll('.res[data-t]').forEach(b=>montarArrastre(b));
+  /* Carril de días y flechas de mes de la agenda del móvil. Van aparte de
+     [data-mes] porque aquí, además del mes, hay que mover el día abierto. */
+  c.querySelectorAll('[data-diam]').forEach(b=>b.addEventListener('click',()=>{
+    diaMovil = b.dataset.diam; pintar();
+  }));
+  c.querySelectorAll('[data-mesm]').forEach(b=>b.addEventListener('click',()=>{
+    const v = b.dataset.mesm;
+    if(v==='hoy'){
+      mesRef = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      diaMovil = aIso(hoy);
+    }else{
+      mesRef = new Date(mesRef.getFullYear(), mesRef.getMonth() + (+v), 1);
+      /* Al cambiar de mes el día abierto pasa al 1 de ese mes, salvo que
+         sea el mes en curso: entonces se vuelve a hoy. */
+      const m = mesRef.getMonth()===hoy.getMonth() && mesRef.getFullYear()===hoy.getFullYear();
+      diaMovil = m ? aIso(hoy) : aIso(new Date(mesRef.getFullYear(), mesRef.getMonth(), 1));
+    }
+    pintar();
+  }));
+  /* En la barra de abajo hay ocho pestañas y no caben a la vez: la activa
+     se trae al centro para que nunca quede fuera de la pantalla. */
+  if(movil()){
+    const tabA = document.querySelector('.tabs .tab[aria-selected="true"]');
+    if(tabA && tabA.scrollIntoView) tabA.scrollIntoView({inline:'center', block:'nearest'});
+  }
+  /* El día elegido, centrado en el carril. */
+  const carril = c.querySelector('#movDias');
+  if(carril){
+    const act = carril.querySelector('[aria-pressed="true"]');
+    if(act) act.scrollIntoView({inline:'center', block:'nearest'});
+  }
   /* La rejilla se repinta con cada cambio que llega de Firestore. Sin esto,
      la reserva que acabas de seleccionar perdería el marco y los tiradores
      en mitad del gesto. */
@@ -4512,6 +4821,16 @@ async function sembrarSiHaceFalta(){
     }
   }
   return true;
+}
+
+/* Si se gira el teléfono o se cambia el tamaño de la ventana y se cruza el
+   corte, hay que repintar: la agenda del móvil y la rejilla semanal son dos
+   pantallas distintas, no la misma encogida. */
+if(window.matchMedia){
+  const mq = window.matchMedia(ANCHO_MOVIL);
+  const alCambiar = () => { if(listo) pintar(); };
+  if(mq.addEventListener) mq.addEventListener('change', alCambiar);
+  else if(mq.addListener) mq.addListener(alCambiar);
 }
 
 auth.onAuthStateChanged(async user=>{
