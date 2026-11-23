@@ -983,6 +983,8 @@ body.arrastrando-on .res{pointer-events:none}
     padding:11px 13px;margin:14px 0 0;font-size:12px;line-height:1.45;color:var(--dim)}
   .mov-ayuda b{color:var(--tinta);font-weight:600}
 }
+.aviso-mes{display:block;margin-top:6px;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.04em;color:var(--oro);min-height:14px}
 
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -4176,6 +4178,28 @@ function abrirCobroRapido(trabajoId, sugerido){
   }));
 }
 
+/* Después de guardar un movimiento hay que ENSEÑARLO. Si la fecha cae
+   fuera del periodo que está a la vista —una factura de octubre metida en
+   noviembre, por ejemplo— se guardaba correctamente pero la pantalla seguía
+   enseñando otro mes: ni rastro de lo que se acababa de escribir, ni aviso
+   de nada. Desde fuera eso se lee como "la app no me deja", y lleva a
+   meterlo tres veces. Así que la vista se mueve al mes del movimiento y se
+   abre su grupo, que además está plegado de entrada. */
+function mostrarMovimiento(fecha, lista){
+  const d = aFecha(fecha), m = d.getMonth(), a = d.getFullYear();
+  listaSel = lista;
+  const seVeYa = a === periodo.anio && (
+      periodo.tipo === 'anio' ? true
+    : periodo.tipo === 'tri'  ? Math.floor(m/3)+1 === periodo.tri
+    :                           m === periodo.mes);
+  if(!seVeYa){                       // solo se toca el periodo si hace falta
+    periodo.tipo = 'mes'; periodo.anio = a; periodo.mes = m;
+    periodo.tri = Math.floor(m/3)+1;
+    anioSel = a;
+  }
+  mesesAbiertos.add(lista + '-' + m);
+}
+
 /* ─── hoja de gasto ────────────────────────────────────────────────── */
 let editG=null;
 function abrirGasto(id){
@@ -4189,7 +4213,8 @@ function abrirGasto(id){
         <input type="number" id="g-imp" min="0" step="0.01" inputmode="decimal"
           value="${g.importe!=null ? g.importe : ''}"></div>
       <div class="campo"><label for="g-fecha">Fecha</label>
-        <input type="date" id="g-fecha" value="${g.fecha}"></div></div>
+        <input type="date" id="g-fecha" value="${g.fecha}">
+        <small id="g-aviso" class="aviso-mes"></small></div></div>
     <div class="campo"><label for="g-tipofis">Qué tipo de gasto es</label>
       <select id="g-tipofis">${Object.entries(TIPOS_GASTO).map(([k,v])=>
         `<option value="${k}"${k===(g.tipo||(g.conFactura===false?'sinfactura':'compra'))?' selected':''}>${v.n}</option>`).join('')}</select></div>
@@ -4233,6 +4258,19 @@ function abrirGasto(id){
     $(q).addEventListener('input',desgloseG); $(q).addEventListener('change',desgloseG); });
   desgloseG();
 
+  /* Si la fecha es de otro mes se dice aquí mismo, antes de guardar. */
+  function avisoMes(){
+    const v = $('#g-fecha').value, n = $('#g-aviso');
+    if(!n) return;
+    const d = v ? aFecha(v) : null;
+    n.textContent = (d && (d.getMonth()!==hoy.getMonth() || d.getFullYear()!==hoy.getFullYear()))
+      ? `Se guardará en ${MESES[d.getMonth()]} de ${d.getFullYear()}.`
+      : '';
+  }
+  $('#g-fecha').addEventListener('change', avisoMes);
+  $('#g-fecha').addEventListener('input', avisoMes);
+  avisoMes();
+
   $('#g-ok').addEventListener('click',()=>{
     const pagado=numero($('#g-imp').value), k=$('#g-tipofis').value;
     const y=desgloseGasto({importe:pagado, tipo:k});
@@ -4243,6 +4281,7 @@ function abrirGasto(id){
       via:$('#g-via').value, categoria:$('#g-cat').value,
       conFactura:TIPOS_GASTO[k].deduce, fijo:$('#g-tipo').value==='1'};
     if(editG) Object.assign(editG,d); else D.gastos.push(Object.assign({id:nid()},d));
+    mostrarMovimiento(d.fecha, d.fijo ? 'fij' : 'var');
     cerrar(); guardar(); pintar();
   });
   const del=$('#g-del'); if(del) del.addEventListener('click',()=>{
@@ -4305,6 +4344,7 @@ function abrirIngreso(id){
       importe:numero($('#i-imp').value), via:$('#i-via').value, facturado:$('#i-fact').value==='1',
       trabajoId:$('#i-trab').value||null};
     if(editI) Object.assign(editI,d); else D.cobros.push(Object.assign({id:nid()},d));
+    mostrarMovimiento(d.fecha, 'ing');
     cerrar(); guardar(); pintar();
   });
   const del=$('#i-del'); if(del) del.addEventListener('click',()=>{
